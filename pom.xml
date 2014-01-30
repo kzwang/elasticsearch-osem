@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.github.kzwang</groupId>
+    <artifactId>elasticsearch-osem</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>ElasticSearch OSEM</name>
+    <description>Object/Search Engine Mapping for ElasticSearch</description>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:git@github.com:kzwang/elasticsearch-osem.git</connection>
+        <developerConnection>scm:git:git@github.com:kzwang/elasticsearch-osem.git</developerConnection>
+        <url>http://github.com/kzwang/elasticsearch-osem</url>
+    </scm>
+
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
+
+    <properties>
+        <elasticsearch.version>0.90.10</elasticsearch.version>
+        <jackson.version>2.3.1</jackson.version>
+        <tests.jvms>1</tests.jvms>
+        <tests.shuffle>true</tests.shuffle>
+        <tests.output>onerror</tests.output>
+    </properties>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>${elasticsearch.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>0.9.9-RC1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>${elasticsearch.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-all</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.carrotsearch.randomizedtesting</groupId>
+            <artifactId>randomizedtesting-runner</artifactId>
+            <version>2.0.15</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.10</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.carrotsearch.randomizedtesting</groupId>
+                <artifactId>junit4-maven-plugin</artifactId>
+                <version>2.0.15</version>
+                <executions>
+                    <execution>
+                        <id>tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>junit4</goal>
+                        </goals>
+                        <configuration>
+                            <heartbeat>20</heartbeat>
+                            <jvmOutputAction>pipe,warn</jvmOutputAction>
+                            <leaveTemporary>true</leaveTemporary>
+                            <listeners>
+                                <report-ant-xml mavenExtensions="true"
+                                                dir="${project.build.directory}/surefire-reports"/>
+                                <report-text
+                                        showThrowable="true"
+                                        showStackTraces="true"
+                                        showOutput="${tests.output}"
+                                        showStatusOk="false"
+                                        showStatusError="true"
+                                        showStatusFailure="true"
+                                        showStatusIgnored="true"
+                                        showSuiteSummary="true"
+                                        timestamps="false"/>
+                                <report-execution-times file="${basedir}/.local-execution-hints.log"/>
+                            </listeners>
+                            <assertions>
+                                <enable/>
+                            </assertions>
+                            <parallelism>${tests.jvms}</parallelism>
+                            <balancers>
+                                <execution-times>
+                                    <fileset dir="${basedir}" includes=".local-execution-hints.log"/>
+                                </execution-times>
+                            </balancers>
+                            <includes>
+                                <include>**/*Tests.class</include>
+                                <include>**/*Test.class</include>
+                            </includes>
+                            <excludes>
+                                <exclude>**/Abstract*.class</exclude>
+                                <exclude>**/*StressTest.class</exclude>
+                            </excludes>
+                            <jvmArgs>
+                                <param>-Xmx512m</param>
+                                <param>-XX:MaxDirectMemorySize=512m</param>
+                                <param>-Des.logger.prefix=</param>
+                            </jvmArgs>
+                            <shuffleOnSlave>${tests.shuffle}</shuffleOnSlave>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- we skip surefire to work with randomized testing above -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.15</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.1.2</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
