@@ -16,6 +16,9 @@ import java.util.Date;
 import java.util.TimeZone;
 
 
+/**
+ * Override {@link JacksonAnnotationIntrospector} to read OSEM annotations
+ */
 public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIntrospector {
 
 

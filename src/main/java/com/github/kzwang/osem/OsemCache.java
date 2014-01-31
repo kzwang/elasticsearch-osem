@@ -6,7 +6,9 @@ import org.elasticsearch.common.collect.Maps;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-
+/**
+ * Cache mapping, fields etc.
+ */
 public class OsemCache {
 
     private static OsemCache instance = null;
@@ -15,6 +17,11 @@ public class OsemCache {
 
     private Map<Class, Field> idFieldCache = Maps.newHashMap();
 
+    /**
+     * Get Singleton {@link OsemCache} cache instance
+     *
+     * @return instance
+     */
     public static OsemCache getInstance() {
         if (instance == null) {
             instance = new OsemCache();

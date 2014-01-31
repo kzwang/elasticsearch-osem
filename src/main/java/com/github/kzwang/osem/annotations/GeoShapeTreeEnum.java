@@ -1,9 +1,21 @@
 package com.github.kzwang.osem.annotations;
 
 /**
- * @See <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-shape-type.html#_prefix_trees">
- * http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-shape-type.html#_prefix_trees</a>
+ * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-shape-type.html#_prefix_trees">Prefix Tree</a>
  */
 public enum GeoShapeTreeEnum {
-    NA, GEOHASH, QUADTREE
+    /**
+     * Use default value in ElasticSearch
+     */
+    NA,
+
+    /**
+     * Use GeohashPrefixTree (geohash)
+     */
+    GEOHASH,
+
+    /**
+     * Use QuadPrefixTree (quadtree)
+     */
+    QUADTREE
 }

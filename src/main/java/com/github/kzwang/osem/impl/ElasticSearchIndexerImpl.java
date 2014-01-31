@@ -69,7 +69,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public PutMappingResponse putMapping(Class clazz, String mapping) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
 
         if (logger.isDebugEnabled()) {
             logger.debug("Put mapping for class: {}, type: {}, mapping: {}", clazz.getSimpleName(), typeName, mapping);
@@ -87,7 +87,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public DeleteMappingResponse deleteMapping(Class clazz) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
 
         if (logger.isDebugEnabled()) {
             logger.debug("Delete mapping for class: {}, type: {}", clazz.getSimpleName(), typeName);
@@ -104,7 +104,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public String getMapping(Class clazz) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
         if (logger.isDebugEnabled()) {
             logger.debug("Get mapping for class: {}, type: {}", clazz.getSimpleName(), typeName);
         }
@@ -126,7 +126,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     private IndexRequestBuilder getIndexRequest(Object object) {
         try {
-            String typeName = MappingProcessor.getIndexableName(object.getClass());
+            String typeName = MappingProcessor.getIndexTypeName(object.getClass());
             Object objectId = objectProcessor.getIdValue(object);
             Preconditions.checkNotNull(objectId, "Object id cannot be null");
             String objectJson = objectProcessor.toJsonString(object);
@@ -180,7 +180,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     private DeleteRequestBuilder getDeleteRequest(Object object) {
         try {
-            String typeName = MappingProcessor.getIndexableName(object.getClass());
+            String typeName = MappingProcessor.getIndexTypeName(object.getClass());
             Object objectId = objectProcessor.getIdValue(object);
             Preconditions.checkNotNull(objectId, "Object id cannot be null");
             if (logger.isDebugEnabled()) {
@@ -205,11 +205,6 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         return null;
     }
 
-    @Override
-    public DeleteByQueryResponse deleteByQuery(Class clazz, QueryBuilder queryBuilder) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
-        return client.prepareDeleteByQuery(getIndexName()).setQuery(queryBuilder).setTypes(typeName).get();
-    }
 
     @Override
     public BulkResponse bulkDelete(Object... objects) {
@@ -231,6 +226,14 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         }
         return bulkRequest.get();
     }
+
+
+    @Override
+    public DeleteByQueryResponse deleteByQuery(Class clazz, QueryBuilder queryBuilder) {
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
+        return client.prepareDeleteByQuery(getIndexName()).setQuery(queryBuilder).setTypes(typeName).get();
+    }
+
 
     @Override
     public boolean indexExist() {

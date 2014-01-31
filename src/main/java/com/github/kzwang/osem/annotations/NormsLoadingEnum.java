@@ -2,9 +2,23 @@ package com.github.kzwang.osem.annotations;
 
 
 /**
- * @See <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-core-types.html">
- * http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-core-types.html</a>
+ * "norms.loading" field in mapping
+ *
+ * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-core-types.html">Mapping Core Types</a>
  */
 public enum NormsLoadingEnum {
-    NA, EAGER, LAZY
+    /**
+     * Use default value in ElasticSearch
+     */
+    NA,
+
+    /**
+     * Set "norms.loading" to "eager"
+     */
+    EAGER,
+
+    /**
+     * Set "norms.loading" to "lazy"
+     */
+    LAZY
 }

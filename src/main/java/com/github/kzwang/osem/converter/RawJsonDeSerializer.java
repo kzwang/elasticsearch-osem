@@ -7,7 +7,8 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import java.io.IOException;
 
 /**
- * Convert JSON object to json string
+ * Deserializer used to convert JSON object to json string directly
+ * used for JSON type {@link com.github.kzwang.osem.annotations.TypeEnum#JSON}
  */
 public class RawJsonDeSerializer extends JsonDeserializer<String> {
     @Override

@@ -16,6 +16,9 @@ import org.elasticsearch.common.logging.Loggers;
 import java.lang.reflect.Field;
 
 
+/**
+ * Serialize/Deserialize object using Jackson
+ */
 public class ObjectProcessor {
 
     private static final ESLogger logger = Loggers.getLogger(ObjectProcessor.class);
@@ -59,6 +62,12 @@ public class ObjectProcessor {
         deSerializeMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
+    /**
+     * Serialize object to json string
+     *
+     * @param object object to serialize
+     * @return json string of the object
+     */
     public String toJsonString(Object object) {
         try {
             return serializeMapper.writeValueAsString(object);
@@ -70,6 +79,13 @@ public class ObjectProcessor {
     }
 
 
+    /**
+     * Deserialize object to json string
+     *
+     * @param string json string to deserialize
+     * @param clazz  Class to deserialize to
+     * @return object
+     */
     public <T> T fromJsonString(String string, Class<T> clazz) {
         try {
             return deSerializeMapper.readValue(string, clazz);
@@ -81,8 +97,14 @@ public class ObjectProcessor {
     }
 
 
-    public Object getIdValue(Object object) throws NoSuchFieldException, IllegalAccessException {
-        Field idField = osemCache.getIdFieldCache(object.getClass());
+    /**
+     * Get the id of the object
+     *
+     * @param object object to get id
+     * @return id value
+     */
+    public Object getIdValue(Object object) {
+        Field idField = osemCache.getIdFieldCache(object.getClass());  // try cache first
         if (idField == null) {
             idField = OsemReflectionUtils.getIdField(object.getClass());
             Preconditions.checkNotNull(idField, "Can't find id field for class: {}", object.getClass().getSimpleName());
@@ -91,7 +113,13 @@ public class ObjectProcessor {
         return OsemReflectionUtils.getFieldValue(object, idField);
     }
 
-    public String getParentId(Object object) throws NoSuchFieldException, IllegalAccessException {
+    /**
+     * Get the parent id of the object
+     *
+     * @param object object to get parent id
+     * @return parent id
+     */
+    public String getParentId(Object object) {
         if (object == null) return null;
         Indexable indexable = object.getClass().getAnnotation(Indexable.class);
         if (indexable == null || indexable.parentIdField().isEmpty() || indexable.parentClass() == void.class)

@@ -1,11 +1,11 @@
 package com.github.kzwang.osem.annotations;
 
 /**
- * "path" in multi_field mapping
+ * "path" in object type
  *
- * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-multi-field-type.html#_accessing_fields">Accessing fields</a>
+ * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-object-type.html#_path_3">Object Type path</a>
  */
-public enum MultiFieldPathEnum {
+public enum ObjectFieldPathEnum {
     /**
      * Use default value in ElasticSearch
      */

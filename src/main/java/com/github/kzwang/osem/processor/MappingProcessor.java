@@ -23,13 +23,21 @@ import java.util.Set;
 
 import static org.reflections.ReflectionUtils.*;
 
-
+/**
+ * Utils for mapping related operations
+ */
 public class MappingProcessor {
 
     private static final ESLogger logger = Loggers.getLogger(MappingProcessor.class);
 
+    /**
+     * Get the mapping for class
+     *
+     * @param clazz class to get mapping
+     * @return map of the mapping
+     */
     public static Map<String, Object> getMapping(Class clazz) {
-        String indexableName = getIndexableName(clazz);
+        String indexableName = getIndexTypeName(clazz);
 
         Map<String, Object> mapping = Maps.newHashMap();
         Map<String, Object> objectMap = getMapping(clazz, null);
@@ -41,7 +49,7 @@ public class MappingProcessor {
 
         if (indexable.parentClass() != void.class) {
             Map<String, Object> parentMap = Maps.newHashMap();
-            parentMap.put("type", getIndexableName(indexable.parentClass()));
+            parentMap.put("type", getIndexTypeName(indexable.parentClass()));
             objectMap.put("_parent", parentMap);
         }
 
@@ -78,6 +86,12 @@ public class MappingProcessor {
 
     }
 
+    /**
+     * Get the mapping for class
+     *
+     * @param clazz class to get mapping
+     * @return mapping string
+     */
     public static String getMappingAsJson(Class clazz) {
         Map<String, Object> mappingMap = MappingProcessor.getMapping(clazz);
         if (mappingMap != null) {
@@ -92,7 +106,13 @@ public class MappingProcessor {
         return null;
     }
 
-    public static String getIndexableName(Class clazz) {
+    /**
+     * Get the index type name for class
+     *
+     * @param clazz class to get type name
+     * @return index type name
+     */
+    public static String getIndexTypeName(Class clazz) {
         String typeName = CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, clazz.getSimpleName());
         Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
         if (indexable != null && indexable.name() != null && !indexable.name().isEmpty()) {
@@ -228,7 +248,7 @@ public class MappingProcessor {
             fieldMap.put("store", "yes");
         }
 
-        if (indexableProperty.boost() != 1.0) {
+        if (indexableProperty.boost() != Double.MIN_NORMAL) {
             fieldMap.put("boost", indexableProperty.boost());
         }
 
@@ -304,24 +324,28 @@ public class MappingProcessor {
             fieldMap.put("lat_lon", Boolean.TRUE.toString());
         }
 
-        if (indexableProperty.geoPointGeoHash()) {
+        if (indexableProperty.geoPointGeohash()) {
             fieldMap.put("geohash", Boolean.TRUE.toString());
         }
 
-        if (indexableProperty.geoPointGeoHashPrecision() != Integer.MIN_VALUE) {
-            fieldMap.put("geohash_precision", indexableProperty.geoPointGeoHashPrecision());
+        if (indexableProperty.geoPointGeohashPrecision() != Integer.MIN_VALUE) {
+            fieldMap.put("geohash_precision", indexableProperty.geoPointGeohashPrecision());
         }
 
-        if (indexableProperty.geoPointValidate()) {
-            fieldMap.put("validate", Boolean.TRUE.toString());
+        if (indexableProperty.geoPointGeohashPrefix()) {
+            fieldMap.put("geohash_prefix", Boolean.TRUE.toString());
         }
 
-        if (indexableProperty.geoPointValidateLat()) {
-            fieldMap.put("validate_lat", Boolean.TRUE.toString());
+        if (!indexableProperty.geoPointValidate()) {
+            fieldMap.put("validate", Boolean.FALSE.toString());
         }
 
-        if (indexableProperty.geoPointValidateLon()) {
-            fieldMap.put("validate_lon", Boolean.TRUE.toString());
+        if (!indexableProperty.geoPointValidateLat()) {
+            fieldMap.put("validate_lat", Boolean.FALSE.toString());
+        }
+
+        if (!indexableProperty.geoPointValidateLon()) {
+            fieldMap.put("validate_lon", Boolean.FALSE.toString());
         }
 
         if (!indexableProperty.geoPointNormalize()) {
@@ -342,6 +366,10 @@ public class MappingProcessor {
 
         if (!indexableProperty.geoShapePrecision().isEmpty()) {
             fieldMap.put("precision", indexableProperty.geoShapePrecision());
+        }
+
+        if (indexableProperty.geoShapeTreeLevels() != Integer.MIN_VALUE) {
+            fieldMap.put("tree_levels", indexableProperty.geoShapeTreeLevels());
         }
 
         if (indexableProperty.geoShapeDistanceErrorPct() != Float.MIN_VALUE) {
@@ -400,8 +428,8 @@ public class MappingProcessor {
             fieldMap.put("enabled", Boolean.FALSE.toString());
         }
 
-        if (!indexableComponent.path().isEmpty()) {
-            fieldMap.put("path", indexableComponent.path());
+        if (indexableComponent.path() != ObjectFieldPathEnum.NA) {
+            fieldMap.put("path", indexableComponent.path().toString().toLowerCase());
         }
 
         if (indexableComponent.includeInAll() != IncludeInAllEnum.NA) {
@@ -446,7 +474,7 @@ public class MappingProcessor {
     }
 
     private static String getFieldType(TypeEnum fieldTypeEnum, AccessibleObject accessibleObject) {
-        String fieldType = "";
+        String fieldType;
 
         if (fieldTypeEnum.equals(TypeEnum.AUTO)) {
             Class fieldClass = null;

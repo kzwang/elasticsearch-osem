@@ -54,7 +54,7 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
         }
 
 
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
         countRequestBuilder.setTypes(typeName);
 
         if (logger.isDebugEnabled()) {
@@ -124,7 +124,7 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
         SearchRequestBuilder builder = client.prepareSearch(getIndexName());
         List<String> typeNames = new ArrayList<String>();
         for (Class c : clazz) {
-            String typeName = MappingProcessor.getIndexableName(c);
+            String typeName = MappingProcessor.getIndexTypeName(c);
             if (typeName != null) {
                 typeNames.add(typeName);
             }
@@ -137,7 +137,7 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
 
     @Override
     public <T> T getById(Class<T> clazz, String id) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
         if (logger.isDebugEnabled()) {
             logger.debug("Get object by id, class: {}, type: {}, id: {}", clazz.getSimpleName(), typeName, id);
         }
@@ -150,7 +150,7 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
 
     @Override
     public <T> List<T> getByIds(Class<T> clazz, List<String> ids) {
-        String typeName = MappingProcessor.getIndexableName(clazz);
+        String typeName = MappingProcessor.getIndexTypeName(clazz);
         if (logger.isDebugEnabled()) {
             logger.debug("Get objects by ids, class: {}, type: {}, ids: {}", clazz.getSimpleName(), typeName, ids);
         }

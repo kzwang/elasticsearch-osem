@@ -7,6 +7,7 @@
     <packaging>jar</packaging>
     <name>ElasticSearch OSEM</name>
     <description>Object/Search Engine Mapping for ElasticSearch</description>
+    <url>http://github.com/kzwang/elasticsearch-osem</url>
 
     <licenses>
         <license>
@@ -20,6 +21,14 @@
         <developerConnection>scm:git:git@github.com:kzwang/elasticsearch-osem.git</developerConnection>
         <url>http://github.com/kzwang/elasticsearch-osem</url>
     </scm>
+
+    <developers>
+        <developer>
+            <id>kzwang</id>
+            <name>Kevin Wang</name>
+            <email>kevin807359@gmail.com</email>
+        </developer>
+    </developers>
 
     <parent>
         <groupId>org.sonatype.oss</groupId>
@@ -62,9 +71,22 @@
         </dependency>
 
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>16.0</version>
+        </dependency>
+
+
+        <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>0.9.9-RC1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>  <!-- exclude old version of guava -->
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -99,7 +121,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.10</version>
+            <version>4.11</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -189,6 +211,20 @@
                 <executions>
                     <execution>
                         <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.7</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
                         <goals>
                             <goal>jar</goal>
                         </goals>
