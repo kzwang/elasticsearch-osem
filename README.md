@@ -83,3 +83,12 @@ Search Object:
 ```Java
     List<Tweet> searchResult = searcher.search(Tweet.class, QueryBuilders.matchAllQuery(), null);
 ```
+
+## Maven
+```xml
+    <dependency>
+        <groupId>com.github.kzwang</groupId>
+        <artifactId>elasticsearch-osem</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+```
