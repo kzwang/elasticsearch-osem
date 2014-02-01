@@ -14,7 +14,6 @@ import com.github.kzwang.osem.impl.ElasticSearchIndexerImpl;
 import com.github.kzwang.osem.impl.ElasticSearchSearcherImpl;
 import com.github.kzwang.osem.model.Tweet;
 import com.github.kzwang.osem.test.AbstractOsemTest;
-import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +42,6 @@ public class ElasticSearchOsemIntegrationTest extends AbstractOsemTest {
 
     private Node node;
 
-
     @Before
     public void setUp() {
         node = nodeBuilder().local(true).node();
@@ -66,9 +64,10 @@ public class ElasticSearchOsemIntegrationTest extends AbstractOsemTest {
         indexer.createMapping(Tweet.class);
 
         // get mapping and check correct
-        String mappingFromServer = indexer.getMapping(Tweet.class);
-        logger.info("Mapping from server: {}", mappingFromServer);
         String expectMapping = copyToStringFromClasspath("/com/github/kzwang/osem/tweet_expect_mapping_from_server.json");
+        String mappingFromServer = indexer.getMapping(Tweet.class);
+        logger.info("Expected Mapping from server: {}", expectMapping);
+        logger.info("Mapping from server: {}", mappingFromServer);
         assertThat(mappingFromServer, equalTo(expectMapping));
 
         // delete mapping

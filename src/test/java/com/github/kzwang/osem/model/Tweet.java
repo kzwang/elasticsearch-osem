@@ -6,7 +6,9 @@ import com.github.kzwang.osem.serializer.ImageSerializer;
 import java.util.Date;
 import java.util.List;
 
-@Indexable(name = "tweetIndex", numericDetection = NumericDetectionEnum.TRUE)
+@Indexable(name = "tweetIndex", numericDetection = NumericDetectionEnum.TRUE, allFieldEnabled = false,
+        sizeFieldEnabled = true, timestampFieldEnabled = true, timestampFieldPath = "tweetDatetime",
+        timestampFieldFormat = "yyyy/MM/dd HH:mm:ss")
 public class Tweet {
 
     @IndexableId(index = IndexEnum.NOT_ANALYZED)

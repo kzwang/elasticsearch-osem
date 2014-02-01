@@ -1,6 +1,6 @@
 # ElasticSearch OSEM
 
-Object Search Engine Mapper for ElasticSearch
+Object Search Engine Mapping for ElasticSearch
 
 [![Build Status](https://travis-ci.org/kzwang/elasticsearch-osem.png?branch=master)](https://travis-ci.org/kzwang/elasticsearch-osem)
 
@@ -11,6 +11,8 @@ Object Search Engine Mapper for ElasticSearch
 
 
 ## Example
+
+Please see [ElasticSearchOsemIntegrationTest.java](https://github.com/kzwang/elasticsearch-osem/blob/master/src/test/java/com/github/kzwang/osem/api/ElasticSearchOsemIntegrationTest.java) for more examples
 
 Create model:
 

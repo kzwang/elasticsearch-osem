@@ -4,7 +4,7 @@ import com.github.kzwang.osem.annotations.Indexable;
 import com.github.kzwang.osem.annotations.IndexableId;
 import com.github.kzwang.osem.annotations.IndexableProperty;
 
-@Indexable(parentClass = Tweet.class, parentIdField = "tweetId")
+@Indexable(parentClass = Tweet.class, parentPath = "tweetId")
 public class TweetComment {
 
     @IndexableId

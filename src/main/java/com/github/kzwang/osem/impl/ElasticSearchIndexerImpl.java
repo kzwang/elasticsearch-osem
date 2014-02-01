@@ -1,7 +1,8 @@
 package com.github.kzwang.osem.impl;
 
-import com.github.kzwang.osem.OsemCache;
 import com.github.kzwang.osem.api.ElasticSearchIndexer;
+import com.github.kzwang.osem.cache.CacheType;
+import com.github.kzwang.osem.cache.OsemCache;
 import com.github.kzwang.osem.processor.MappingProcessor;
 import com.github.kzwang.osem.processor.ObjectProcessor;
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
@@ -77,8 +78,8 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
         PutMappingResponse response = client.admin().indices().preparePutMapping(getIndexName()).setType(typeName).setSource(mapping).get();
 
-        if (!cache.isMappingExist(clazz)) {
-            cache.addMappingCache(clazz, mapping);
+        if (!cache.isExist(CacheType.MAPPING, clazz)) {
+            cache.putCache(CacheType.MAPPING, clazz, mapping);
         }
 
         return response;
@@ -95,7 +96,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
         if (client.admin().indices().prepareTypesExists(getIndexName()).setTypes(typeName).get().isExists()) {
             DeleteMappingResponse response = client.admin().indices().prepareDeleteMapping(getIndexName()).setType(typeName).get();
-            cache.deleteMappingCache(clazz);
+            cache.removeCache(CacheType.MAPPING, clazz);
             return response;
         }
 
@@ -110,34 +111,40 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         }
         ClusterStateResponse response = client.admin().cluster().prepareState().setFilterIndices(getIndexName()).get();
         MetaData metaData = response.getState().metaData();
-        IndexMetaData indexMetaData = metaData.iterator().next();
-        for (ObjectCursor<MappingMetaData> cursor : indexMetaData.mappings().values()) {
-            MappingMetaData mappingMd = cursor.value;
-            if (mappingMd.type().equals(typeName)) {
-                try {
-                    return mappingMd.source().string();
-                } catch (IOException e) {
-                    logger.error("Failed convert mapping to string", e);
+        if (metaData.iterator().hasNext()) {
+            IndexMetaData indexMetaData = metaData.iterator().next();
+            for (ObjectCursor<MappingMetaData> cursor : indexMetaData.mappings().values()) {
+                MappingMetaData mappingMd = cursor.value;
+                if (mappingMd.type().equals(typeName)) {
+                    try {
+                        return mappingMd.source().string();
+                    } catch (IOException e) {
+                        logger.error("Failed convert mapping to string", e);
+                    }
                 }
             }
         }
+
         return null;
     }
 
     private IndexRequestBuilder getIndexRequest(Object object) {
         try {
-            String typeName = MappingProcessor.getIndexTypeName(object.getClass());
+            Class objectClass = object.getClass();
+            String typeName = MappingProcessor.getIndexTypeName(objectClass);
             Object objectId = objectProcessor.getIdValue(object);
             Preconditions.checkNotNull(objectId, "Object id cannot be null");
             String objectJson = objectProcessor.toJsonString(object);
             if (logger.isDebugEnabled()) {
                 logger.debug("Get index object request, type:{}, id: {}, content: {}", typeName, objectId, objectJson);
             }
-            if (!cache.isMappingExist(object.getClass())) {
-                createMapping(object.getClass());
+            if (!cache.isExist(CacheType.MAPPING, objectClass)) {  // check mapping exist in cache or not
+                if (getMapping(objectClass) == null) {  // mapping not exist on server
+                    createMapping(objectClass);  // create mapping first
+                }
             }
             IndexRequestBuilder indexRequestBuilder = client.prepareIndex(getIndexName(), typeName, objectId.toString());
-            indexRequestBuilder.setParent(objectProcessor.getParentId(object)).setSource(objectJson);
+            indexRequestBuilder.setRouting(objectProcessor.getRoutingId(object)).setParent(objectProcessor.getParentId(object)).setSource(objectJson);
             return indexRequestBuilder;
         } catch (Exception ex) {
             logger.error("Failed get index request", ex);
@@ -187,7 +194,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
                 logger.debug("Get delete object request, type:{}, id: {}", typeName, objectId);
             }
             DeleteRequestBuilder deleteRequestBuilder = client.prepareDelete(getIndexName(), typeName, objectId.toString());
-            deleteRequestBuilder.setParent(objectProcessor.getParentId(object));
+            deleteRequestBuilder.setRouting(objectProcessor.getRoutingId(object)).setParent(objectProcessor.getParentId(object));
             return deleteRequestBuilder;
         } catch (Exception ex) {
             logger.error("Failed get delete request", ex);

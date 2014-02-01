@@ -51,7 +51,7 @@ public @interface IndexableProperty {
     /**
      * "boost" field in mapping
      */
-    double boost() default Double.MIN_NORMAL;
+    double boost() default Double.MIN_VALUE;
 
     /**
      * "null_value" field in mapping

@@ -1,6 +1,8 @@
 package com.github.kzwang.osem.processor;
 
 import com.github.kzwang.osem.annotations.*;
+import com.github.kzwang.osem.cache.CacheType;
+import com.github.kzwang.osem.cache.OsemCache;
 import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 import com.github.kzwang.osem.utils.OsemReflectionUtils;
 import com.google.common.base.CaseFormat;
@@ -30,6 +32,8 @@ public class MappingProcessor {
 
     private static final ESLogger logger = Loggers.getLogger(MappingProcessor.class);
 
+    private static final OsemCache osemCache = OsemCache.getInstance();
+
     /**
      * Get the mapping for class
      *
@@ -39,49 +43,12 @@ public class MappingProcessor {
     public static Map<String, Object> getMapping(Class clazz) {
         String indexableName = getIndexTypeName(clazz);
 
+        Map<String, Object> indexableMap = getIndexableMap(clazz);
+        indexableMap.put("properties", getPropertiesMap(clazz));
+
+
         Map<String, Object> mapping = Maps.newHashMap();
-        Map<String, Object> objectMap = getMapping(clazz, null);
-
-
-        // process root object
-        Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
-        Preconditions.checkNotNull(indexable, "Class {} is not Indexable", clazz.getName());
-
-        if (indexable.parentClass() != void.class) {
-            Map<String, Object> parentMap = Maps.newHashMap();
-            parentMap.put("type", getIndexTypeName(indexable.parentClass()));
-            objectMap.put("_parent", parentMap);
-        }
-
-        if (!indexable.indexAnalyzer().isEmpty()) {
-            objectMap.put("index_analyzer", indexable.indexAnalyzer());
-        }
-
-        if (!indexable.searchAnalyzer().isEmpty()) {
-            objectMap.put("search_analyzer", indexable.searchAnalyzer());
-        }
-
-        if (indexable.dynamicDateFormats().length > 0) {
-            objectMap.put("dynamic_date_formats", Lists.newArrayList(indexable.dynamicDateFormats()));
-        }
-
-        if (!indexable.dateDetection().equals(DateDetectionEnum.NA)) {
-            objectMap.put("date_detection", Boolean.valueOf(indexable.dateDetection().toString()));
-        }
-
-        if (!indexable.numericDetection().equals(NumericDetectionEnum.NA)) {
-            objectMap.put("numeric_detection", Boolean.valueOf(indexable.numericDetection().toString()));
-        }
-
-        // handle IndexableId field
-        Field indexableIdField = OsemReflectionUtils.getIdField(clazz);
-        Map<String, Object> idMap = getIndexableIdMap(indexableIdField);
-        if (!idMap.isEmpty()) {
-            objectMap.put("_id", idMap);
-        }
-
-        mapping.put(indexableName, objectMap);
-
+        mapping.put(indexableName, indexableMap);
         return mapping;
 
     }
@@ -93,7 +60,7 @@ public class MappingProcessor {
      * @return mapping string
      */
     public static String getMappingAsJson(Class clazz) {
-        Map<String, Object> mappingMap = MappingProcessor.getMapping(clazz);
+        Map<String, Object> mappingMap = getMapping(clazz);
         if (mappingMap != null) {
             try {
                 XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON);
@@ -113,15 +80,19 @@ public class MappingProcessor {
      * @return index type name
      */
     public static String getIndexTypeName(Class clazz) {
+        if (osemCache.isExist(CacheType.INDEX_TYPE_NAME, clazz)) {
+            return (String) osemCache.getCache(CacheType.INDEX_TYPE_NAME, clazz);
+        }
         String typeName = CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, clazz.getSimpleName());
         Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
         if (indexable != null && indexable.name() != null && !indexable.name().isEmpty()) {
             typeName = indexable.name();
         }
+        osemCache.putCache(CacheType.INDEX_TYPE_NAME, clazz, typeName);
         return typeName;
     }
 
-    private static Map<String, Object> getMapping(Class clazz, Class fromClass) {
+    private static Map<String, Object> getPropertiesMap(Class clazz) {
         Map<String, Object> propertiesMap = Maps.newHashMap();
 
         // process IndexableProperty
@@ -144,12 +115,12 @@ public class MappingProcessor {
         Set<Method> indexableComponentMethods = getAllMethods(clazz, withAnnotation(IndexableComponent.class));
         if (!indexableComponentFields.isEmpty()) {
             for (Field field : indexableComponentFields) {
-                processIndexableComponent(field, propertiesMap, clazz, fromClass);
+                processIndexableComponent(field, propertiesMap);
             }
         }
         if (!indexableComponentMethods.isEmpty()) {
             for (Method method : indexableComponentMethods) {
-                processIndexableComponent(method, propertiesMap, clazz, fromClass);
+                processIndexableComponent(method, propertiesMap);
             }
         }
 
@@ -166,11 +137,238 @@ public class MappingProcessor {
                 processIndexableProperties(method, propertiesMap);
             }
         }
+        return propertiesMap;
+    }
 
-        Map<String, Object> indexNameMap = Maps.newHashMap();
-        indexNameMap.put("properties", propertiesMap);
-        return indexNameMap;
+    private static Map<String, Object> getIndexableMap(Class clazz) {
+        Map<String, Object> objectMap = Maps.newHashMap();
 
+        Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
+        Preconditions.checkNotNull(indexable, "Class {} is not Indexable", clazz.getName());
+
+        if (!indexable.indexAnalyzer().isEmpty()) {
+            objectMap.put("index_analyzer", indexable.indexAnalyzer());
+        }
+
+        if (!indexable.searchAnalyzer().isEmpty()) {
+            objectMap.put("search_analyzer", indexable.searchAnalyzer());
+        }
+
+        if (indexable.dynamicDateFormats().length > 0) {
+            objectMap.put("dynamic_date_formats", Lists.newArrayList(indexable.dynamicDateFormats()));
+        }
+
+        if (!indexable.dateDetection().equals(DateDetectionEnum.NA)) {
+            objectMap.put("date_detection", Boolean.valueOf(indexable.dateDetection().toString()));
+        }
+
+        if (!indexable.numericDetection().equals(NumericDetectionEnum.NA)) {
+            objectMap.put("numeric_detection", Boolean.valueOf(indexable.numericDetection().toString()));
+        }
+
+        // handle _parent
+        if (indexable.parentClass() != void.class) {
+            Map<String, Object> parentMap = Maps.newHashMap();
+            parentMap.put("type", getIndexTypeName(indexable.parentClass()));
+            objectMap.put("_parent", parentMap);
+        }
+
+        // handle _id
+        Field indexableIdField = OsemReflectionUtils.getIdField(clazz);
+        Map<String, Object> idMap = getIndexableIdMap(indexableIdField);
+        if (!idMap.isEmpty()) {
+            objectMap.put("_id", idMap);
+        }
+
+        // handle _type
+        Map<String, Object> typeMap = Maps.newHashMap();
+        if (indexable.typeFieldStore()) {
+            typeMap.put("store", "yes");
+        }
+
+        if (!indexable.typeFieldIndex().equals(IndexEnum.NA)) {
+            typeMap.put("index", indexable.typeFieldIndex().toString().toLowerCase());
+        }
+
+        if (!typeMap.isEmpty()) {
+            objectMap.put("_type", typeMap);
+        }
+
+        // handle _source
+        Map<String, Object> sourceMap = Maps.newHashMap();
+        if (!indexable.sourceFieldEnabled()) {
+            sourceMap.put("enabled", Boolean.FALSE);
+        }
+
+        if (indexable.sourceFieldCompress()) {
+            sourceMap.put("compress", Boolean.TRUE);
+        }
+
+        if (!indexable.sourceFieldCompressThreshold().isEmpty()) {
+            sourceMap.put("compress_threshold", indexable.sourceFieldCompressThreshold());
+        }
+
+        if (indexable.sourceFieldIncludes().length > 0) {
+            sourceMap.put("includes", Lists.newArrayList(indexable.sourceFieldIncludes()));
+        }
+
+        if (indexable.sourceFieldExcludes().length > 0) {
+            sourceMap.put("excludes", Lists.newArrayList(indexable.sourceFieldExcludes()));
+        }
+
+        if (!sourceMap.isEmpty()) {
+            objectMap.put("_source", sourceMap);
+        }
+
+        // handle _all
+        Map<String, Object> allMap = Maps.newHashMap();
+        if (!indexable.allFieldEnabled()) {
+            allMap.put("enabled", Boolean.FALSE);
+        }
+
+        if (indexable.allFieldStore()) {
+            allMap.put("store", "yes");
+        }
+
+        if (!indexable.allFieldTermVector().equals(TermVectorEnum.NA)) {
+            allMap.put("term_vector", indexable.allFieldTermVector().toString().toLowerCase());
+        }
+
+        if (!indexable.allFieldAnalyzer().isEmpty()) {
+            allMap.put("analyzer", indexable.allFieldAnalyzer());
+        }
+
+        if (!indexable.allFieldIndexAnalyzer().isEmpty()) {
+            allMap.put("index_analyzer", indexable.allFieldIndexAnalyzer());
+        }
+
+        if (!indexable.allFieldSearchAnalyzer().isEmpty()) {
+            allMap.put("search_analyzer", indexable.allFieldSearchAnalyzer());
+        }
+
+        if (!allMap.isEmpty()) {
+            objectMap.put("_all", allMap);
+        }
+
+        // handle _analyzer
+        Map<String, Object> analyzerMap = Maps.newHashMap();
+        if (!indexable.analyzerFieldPath().isEmpty()) {
+            analyzerMap.put("path", indexable.analyzerFieldPath());
+        }
+
+        if (!analyzerMap.isEmpty()) {
+            objectMap.put("_analyzer", analyzerMap);
+        }
+
+        // handle _boost
+        Map<String, Object> boostMap = Maps.newHashMap();
+        if (!indexable.boostFieldName().isEmpty()) {
+            boostMap.put("name", indexable.boostFieldName());
+        }
+
+        if (indexable.boostFieldNullValue() != Double.MIN_VALUE) {
+            boostMap.put("null_value", indexable.boostFieldNullValue());
+        }
+
+        if (!boostMap.isEmpty()) {
+            objectMap.put("_boost", boostMap);
+        }
+
+        // handle _routing
+        Map<String, Object> routingMap = Maps.newHashMap();
+        if (!indexable.routingFieldStore()) {
+            routingMap.put("store", "no");
+        }
+
+        if (!indexable.routingFieldIndex().equals(IndexEnum.NA)) {
+            routingMap.put("index", indexable.routingFieldIndex().toString().toLowerCase());
+        }
+
+        if (indexable.routingFieldRequired()) {
+            routingMap.put("required", Boolean.TRUE);
+        }
+
+        if (!indexable.routingFieldPath().isEmpty()) {
+            routingMap.put("path", indexable.routingFieldPath());
+        }
+
+        if (!routingMap.isEmpty()) {
+            objectMap.put("_routing", routingMap);
+        }
+
+        // handle _index
+        Map<String, Object> indexMap = Maps.newHashMap();
+        if (indexable.indexFieldEnabled()) {
+            indexMap.put("enabled", Boolean.TRUE);
+        }
+
+        if (!indexMap.isEmpty()) {
+            objectMap.put("_index", indexMap);
+        }
+
+        // handle _size
+        Map<String, Object> sizeMap = Maps.newHashMap();
+        if (indexable.sizeFieldEnabled()) {
+            sizeMap.put("enabled", Boolean.TRUE);
+        }
+
+        if (indexable.sizeFieldStore()) {
+            sizeMap.put("store", "yes");
+        }
+
+        if (!sizeMap.isEmpty()) {
+            objectMap.put("_size", sizeMap);
+        }
+
+        // handle _timestamp
+        Map<String, Object> timestampMap = Maps.newHashMap();
+        if (indexable.timestampFieldEnabled()) {
+            timestampMap.put("enabled", Boolean.TRUE);
+        }
+
+        if (indexable.timestampFieldStore()) {
+            timestampMap.put("store", "yes");
+        }
+
+        if (!indexable.timestampFieldIndex().equals(IndexEnum.NA)) {
+            timestampMap.put("index", indexable.timestampFieldIndex().toString().toLowerCase());
+        }
+
+        if (!indexable.timestampFieldPath().isEmpty()) {
+            timestampMap.put("path", indexable.timestampFieldPath());
+        }
+
+        if (!indexable.timestampFieldFormat().isEmpty()) {
+            timestampMap.put("format", indexable.timestampFieldFormat());
+        }
+
+        if (!timestampMap.isEmpty()) {
+            objectMap.put("_timestamp", timestampMap);
+        }
+
+        // handle _ttl
+        Map<String, Object> ttlMap = Maps.newHashMap();
+        if (indexable.ttlFieldEnabled()) {
+            ttlMap.put("enabled", Boolean.TRUE);
+        }
+
+        if (!indexable.ttlFieldStore()) {
+            ttlMap.put("store", "no");
+        }
+
+        if (!indexable.ttlFieldIndex().equals(IndexEnum.NA)) {
+            ttlMap.put("index", indexable.ttlFieldIndex().toString().toLowerCase());
+        }
+
+        if (!indexable.ttlFieldDefault().isEmpty()) {
+            ttlMap.put("default", indexable.ttlFieldDefault());
+        }
+
+        if (!ttlMap.isEmpty()) {
+            objectMap.put("_ttl", ttlMap);
+        }
+
+        return objectMap;
     }
 
     private static Map<String, Object> getIndexableIdMap(Field field) {
@@ -248,7 +446,7 @@ public class MappingProcessor {
             fieldMap.put("store", "yes");
         }
 
-        if (indexableProperty.boost() != Double.MIN_NORMAL) {
+        if (indexableProperty.boost() != Double.MIN_VALUE) {
             fieldMap.put("boost", indexableProperty.boost());
         }
 
@@ -297,7 +495,7 @@ public class MappingProcessor {
         }
 
         if (indexableProperty.ignoreMalformed()) {
-            fieldMap.put("ignore_malformed", Boolean.TRUE.toString());
+            fieldMap.put("ignore_malformed", Boolean.TRUE);
         }
 
         if (indexableProperty.postingsFormat() != PostingsFormatEnum.NA) {
@@ -321,11 +519,11 @@ public class MappingProcessor {
         }
 
         if (indexableProperty.geoPointLatLon()) {
-            fieldMap.put("lat_lon", Boolean.TRUE.toString());
+            fieldMap.put("lat_lon", Boolean.TRUE);
         }
 
         if (indexableProperty.geoPointGeohash()) {
-            fieldMap.put("geohash", Boolean.TRUE.toString());
+            fieldMap.put("geohash", Boolean.TRUE);
         }
 
         if (indexableProperty.geoPointGeohashPrecision() != Integer.MIN_VALUE) {
@@ -333,31 +531,31 @@ public class MappingProcessor {
         }
 
         if (indexableProperty.geoPointGeohashPrefix()) {
-            fieldMap.put("geohash_prefix", Boolean.TRUE.toString());
+            fieldMap.put("geohash_prefix", Boolean.TRUE);
         }
 
         if (!indexableProperty.geoPointValidate()) {
-            fieldMap.put("validate", Boolean.FALSE.toString());
+            fieldMap.put("validate", Boolean.FALSE);
         }
 
         if (!indexableProperty.geoPointValidateLat()) {
-            fieldMap.put("validate_lat", Boolean.FALSE.toString());
+            fieldMap.put("validate_lat", Boolean.FALSE);
         }
 
         if (!indexableProperty.geoPointValidateLon()) {
-            fieldMap.put("validate_lon", Boolean.FALSE.toString());
+            fieldMap.put("validate_lon", Boolean.FALSE);
         }
 
         if (!indexableProperty.geoPointNormalize()) {
-            fieldMap.put("normalize", Boolean.FALSE.toString());
+            fieldMap.put("normalize", Boolean.FALSE);
         }
 
         if (!indexableProperty.geoPointNormalizeLat()) {
-            fieldMap.put("normalize_lat", Boolean.FALSE.toString());
+            fieldMap.put("normalize_lat", Boolean.FALSE);
         }
 
         if (!indexableProperty.geoPointNormalizeLon()) {
-            fieldMap.put("normalize_lon", Boolean.FALSE.toString());
+            fieldMap.put("normalize_lon", Boolean.FALSE);
         }
 
         if (indexableProperty.geoShapeTree() != GeoShapeTreeEnum.NA) {
@@ -381,7 +579,7 @@ public class MappingProcessor {
 
     }
 
-    private static void processIndexableComponent(AccessibleObject accessibleObject, Map<String, Object> propertiesMap, Class clazz, Class fromClass) {
+    private static void processIndexableComponent(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
         IndexableComponent indexableComponent = accessibleObject.getAnnotation(IndexableComponent.class);
         Preconditions.checkNotNull(indexableComponent, "Unable to find annotation IndexableComponent");
         String fieldName = null;
@@ -394,13 +592,13 @@ public class MappingProcessor {
 
         Preconditions.checkNotNull(fieldName, "Unable to find field name");
 
-        Map<String, Object> fieldMap = getIndexableComponentMapping(accessibleObject, indexableComponent, clazz, fromClass);
+        Map<String, Object> fieldMap = getIndexableComponentMapping(accessibleObject, indexableComponent);
         if (fieldMap != null) {
             propertiesMap.put(fieldName, fieldMap);
         }
     }
 
-    private static Map<String, Object> getIndexableComponentMapping(AccessibleObject accessibleObject, IndexableComponent indexableComponent, Class clazz, Class fromClass) {
+    private static Map<String, Object> getIndexableComponentMapping(AccessibleObject accessibleObject, IndexableComponent indexableComponent) {
         Class fieldClazz = null;
         if (accessibleObject instanceof Field) {
             fieldClazz = OsemReflectionUtils.getGenericType((Field) accessibleObject);
@@ -409,11 +607,8 @@ public class MappingProcessor {
         }
         Preconditions.checkNotNull(fieldClazz, "Unknown AccessibleObject type");
 
-        if (fromClass != null && fieldClazz == fromClass) {
-            return null;
-        }
-
-        Map<String, Object> fieldMap = getMapping(fieldClazz, clazz);
+        Map<String, Object> fieldMap = Maps.newHashMap();
+        fieldMap.put("properties", getPropertiesMap(fieldClazz));
         if (indexableComponent.nested()) {
             fieldMap.put("type", "nested");
         } else {
@@ -425,7 +620,7 @@ public class MappingProcessor {
         }
 
         if (!indexableComponent.enabled()) {
-            fieldMap.put("enabled", Boolean.FALSE.toString());
+            fieldMap.put("enabled", Boolean.FALSE);
         }
 
         if (indexableComponent.path() != ObjectFieldPathEnum.NA) {

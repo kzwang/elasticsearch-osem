@@ -5,8 +5,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.github.kzwang.osem.OsemCache;
 import com.github.kzwang.osem.annotations.Indexable;
+import com.github.kzwang.osem.cache.CacheType;
+import com.github.kzwang.osem.cache.OsemCache;
 import com.github.kzwang.osem.jackson.JacksonElasticSearchOsemModule;
 import com.github.kzwang.osem.utils.OsemReflectionUtils;
 import org.elasticsearch.common.Preconditions;
@@ -104,13 +105,36 @@ public class ObjectProcessor {
      * @return id value
      */
     public Object getIdValue(Object object) {
-        Field idField = osemCache.getIdFieldCache(object.getClass());  // try cache first
+        Field idField = (Field) osemCache.getCache(CacheType.ID_FIELD, object.getClass());  // try cache first
         if (idField == null) {
             idField = OsemReflectionUtils.getIdField(object.getClass());
             Preconditions.checkNotNull(idField, "Can't find id field for class: {}", object.getClass().getSimpleName());
-            osemCache.addIdFieldCache(object.getClass(), idField);
+            osemCache.putCache(CacheType.ID_FIELD, object.getClass(), idField);
         }
         return OsemReflectionUtils.getFieldValue(object, idField);
+    }
+
+    /**
+     * Get the routing id of the object
+     *
+     * @param object object to get routing id
+     * @return routing id
+     */
+    public String getRoutingId(Object object) {
+        Class clazz = object.getClass();
+        if (osemCache.isExist(CacheType.ROUTING_PATH, clazz)) {
+            String path = (String) osemCache.getCache(CacheType.ROUTING_PATH, clazz);
+            if (path == null || path.isEmpty()) return null;
+            return getValueByPath(object, path);
+        }
+        Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
+        Preconditions.checkNotNull(indexable, "Class {} is no Indexable", object.getClass().getSimpleName());
+        String path = indexable.routingFieldPath();
+        osemCache.putCache(CacheType.ROUTING_PATH, clazz, path);
+        if (!path.isEmpty()) {
+            return getValueByPath(object, path);
+        }
+        return null;
     }
 
     /**
@@ -120,11 +144,24 @@ public class ObjectProcessor {
      * @return parent id
      */
     public String getParentId(Object object) {
-        if (object == null) return null;
-        Indexable indexable = object.getClass().getAnnotation(Indexable.class);
-        if (indexable == null || indexable.parentIdField().isEmpty() || indexable.parentClass() == void.class)
-            return null;
-        String[] fieldNames = indexable.parentIdField().split("\\.");
+        Class clazz = object.getClass();
+        if (osemCache.isExist(CacheType.PARENT_PATH, clazz)) {
+            String path = (String) osemCache.getCache(CacheType.PARENT_PATH, clazz);
+            if (path == null || path.isEmpty()) return null;
+            return getValueByPath(object, path);
+        }
+        Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
+        Preconditions.checkNotNull(indexable, "Class {} is no Indexable", object.getClass().getSimpleName());
+        String path = indexable.parentPath();
+        osemCache.putCache(CacheType.PARENT_PATH, clazz, path);
+        if (!path.isEmpty()) {
+            return getValueByPath(object, path);
+        }
+        return null;
+    }
+
+    private String getValueByPath(Object object, String path) {
+        String[] fieldNames = path.split("\\.");
         Object parentObject = object;
         for (String fieldName : fieldNames) {
             parentObject = OsemReflectionUtils.getFieldValue(parentObject, fieldName);
