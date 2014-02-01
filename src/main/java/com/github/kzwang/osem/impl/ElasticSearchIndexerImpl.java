@@ -129,38 +129,35 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     }
 
     private IndexRequestBuilder getIndexRequest(Object object) {
-        try {
-            Class objectClass = object.getClass();
-            String typeName = MappingProcessor.getIndexTypeName(objectClass);
-            Object objectId = objectProcessor.getIdValue(object);
-            Preconditions.checkNotNull(objectId, "Object id cannot be null");
-            String objectJson = objectProcessor.toJsonString(object);
-            if (logger.isDebugEnabled()) {
-                logger.debug("Get index object request, type:{}, id: {}, content: {}", typeName, objectId, objectJson);
-            }
-            if (!cache.isExist(CacheType.MAPPING, objectClass)) {  // check mapping exist in cache or not
-                if (getMapping(objectClass) == null) {  // mapping not exist on server
-                    createMapping(objectClass);  // create mapping first
-                }
-            }
-            IndexRequestBuilder indexRequestBuilder = client.prepareIndex(getIndexName(), typeName, objectId.toString());
-            indexRequestBuilder.setRouting(objectProcessor.getRoutingId(object)).setParent(objectProcessor.getParentId(object)).setSource(objectJson);
-            return indexRequestBuilder;
-        } catch (Exception ex) {
-            logger.error("Failed get index request", ex);
+        Class objectClass = object.getClass();
+        String typeName = MappingProcessor.getIndexTypeName(objectClass);
+        Object objectId = objectProcessor.getIdValue(object);
+        Preconditions.checkNotNull(objectId, "Object id cannot be null");
+        String objectJson = objectProcessor.toJsonString(object);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Get index object request, type:{}, id: {}, content: {}", typeName, objectId, objectJson);
         }
-        return null;
-
+        if (!cache.isExist(CacheType.MAPPING, objectClass)) {  // check mapping exist in cache or not
+            if (getMapping(objectClass) == null) {  // mapping not exist on server
+                createMapping(objectClass);  // create mapping first
+            }
+        }
+        IndexRequestBuilder indexRequestBuilder = client.prepareIndex(getIndexName(), typeName, objectId.toString());
+        indexRequestBuilder.setSource(objectJson);
+        String routing = objectProcessor.getRoutingId(object);
+        if (routing != null) {
+            indexRequestBuilder.setRouting(routing);
+        }
+        String parent = objectProcessor.getParentId(object);
+        if (parent != null) {
+            indexRequestBuilder.setParent(parent);
+        }
+        return indexRequestBuilder;
     }
 
     @Override
     public IndexResponse index(Object object) {
-        IndexRequestBuilder indexRequestBuilder = getIndexRequest(object);
-        if (indexRequestBuilder != null) {
-            return getIndexRequest(object).get();
-        }
-        return null;
-
+        return getIndexRequest(object).get();
     }
 
     @Override
@@ -174,10 +171,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
                 if (object instanceof IndexRequestBuilder) {
                     bulkRequest.add((IndexRequestBuilder) object);
                 } else {
-                    IndexRequestBuilder indexRequestBuilder = getIndexRequest(object);
-                    if (indexRequestBuilder != null) {
-                        bulkRequest.add(getIndexRequest(object));
-                    }
+                    bulkRequest.add(getIndexRequest(object));
                 }
             }
         }
@@ -186,30 +180,27 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     }
 
     private DeleteRequestBuilder getDeleteRequest(Object object) {
-        try {
-            String typeName = MappingProcessor.getIndexTypeName(object.getClass());
-            Object objectId = objectProcessor.getIdValue(object);
-            Preconditions.checkNotNull(objectId, "Object id cannot be null");
-            if (logger.isDebugEnabled()) {
-                logger.debug("Get delete object request, type:{}, id: {}", typeName, objectId);
-            }
-            DeleteRequestBuilder deleteRequestBuilder = client.prepareDelete(getIndexName(), typeName, objectId.toString());
-            deleteRequestBuilder.setRouting(objectProcessor.getRoutingId(object)).setParent(objectProcessor.getParentId(object));
-            return deleteRequestBuilder;
-        } catch (Exception ex) {
-            logger.error("Failed get delete request", ex);
+        String typeName = MappingProcessor.getIndexTypeName(object.getClass());
+        Object objectId = objectProcessor.getIdValue(object);
+        Preconditions.checkNotNull(objectId, "Object id cannot be null");
+        if (logger.isDebugEnabled()) {
+            logger.debug("Get delete object request, type:{}, id: {}", typeName, objectId);
         }
-        return null;
+        DeleteRequestBuilder deleteRequestBuilder = client.prepareDelete(getIndexName(), typeName, objectId.toString());
+        String routing = objectProcessor.getRoutingId(object);
+        if (routing != null) {
+            deleteRequestBuilder.setRouting(routing);
+        }
+        String parent = objectProcessor.getParentId(object);
+        if (parent != null) {
+            deleteRequestBuilder.setParent(parent);
+        }
+        return deleteRequestBuilder;
     }
 
     @Override
     public DeleteResponse delete(Object object) {
-        if (object == null) return null;
-        DeleteRequestBuilder deleteRequestBuilder = getDeleteRequest(object);
-        if (deleteRequestBuilder != null) {
-            return getDeleteRequest(object).get();
-        }
-        return null;
+        return getDeleteRequest(object).get();
     }
 
 
@@ -224,10 +215,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
                 if (object instanceof DeleteRequestBuilder) {
                     bulkRequest.add((DeleteRequestBuilder) object);
                 } else {
-                    DeleteRequestBuilder deleteRequestBuilder = getDeleteRequest(object);
-                    if (deleteRequestBuilder != null) {
-                        bulkRequest.add(getDeleteRequest(object));
-                    }
+                    bulkRequest.add(getDeleteRequest(object));
                 }
             }
         }

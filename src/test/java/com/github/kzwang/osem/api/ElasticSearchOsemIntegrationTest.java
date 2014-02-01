@@ -168,6 +168,14 @@ public class ElasticSearchOsemIntegrationTest extends AbstractOsemTest {
         }
         indexer.bulkIndex(commentList.toArray());
 
+        // test get
+        TweetComment comment = searcher.getById(TweetComment.class, commentList.get(0).getId().toString());
+        assertThat(comment, nullValue());  // should not found result if no routing set
+        comment = searcher.getById(TweetComment.class, commentList.get(0).getId().toString(), commentList.get(0).getTweetId().toString());
+        assertThat(comment.getId(), equalTo(comment.getId()));
+
+
+        // test search
         indexer.refreshIndex();
 
         // check count for TweetComment

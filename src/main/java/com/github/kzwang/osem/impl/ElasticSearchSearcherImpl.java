@@ -4,9 +4,7 @@ import com.github.kzwang.osem.api.ElasticSearchSearcher;
 import com.github.kzwang.osem.processor.MappingProcessor;
 import com.github.kzwang.osem.processor.ObjectProcessor;
 import org.elasticsearch.action.count.CountRequestBuilder;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.get.MultiGetItemResponse;
-import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.get.*;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -137,11 +135,20 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
 
     @Override
     public <T> T getById(Class<T> clazz, String id) {
+        return getById(clazz, id, null);
+    }
+
+    @Override
+    public <T> T getById(Class<T> clazz, String id, @Nullable String routing) {
         String typeName = MappingProcessor.getIndexTypeName(clazz);
         if (logger.isDebugEnabled()) {
-            logger.debug("Get object by id, class: {}, type: {}, id: {}", clazz.getSimpleName(), typeName, id);
+            logger.debug("Get object by id, class: {}, type: {}, id: {}, routing: {}", clazz.getSimpleName(), typeName, id, routing);
         }
-        GetResponse response = client.prepareGet(getIndexName(), typeName, id).get();
+        GetRequestBuilder getRequest = client.prepareGet(getIndexName(), typeName, id);
+        if (routing != null) {
+            getRequest.setRouting(routing);
+        }
+        GetResponse response = getRequest.get();
         if (response == null || response.getSourceAsString() == null) {
             return null;
         }

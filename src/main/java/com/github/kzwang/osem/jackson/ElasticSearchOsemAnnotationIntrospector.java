@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.introspect.*;
 import com.fasterxml.jackson.databind.ser.std.RawSerializer;
 import com.github.kzwang.osem.annotations.*;
 import com.github.kzwang.osem.converter.RawJsonDeSerializer;
+import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.Collection;
@@ -144,7 +145,7 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
                     Object s = getSerializer(property, a);
                     if (s != null) {
                         if (serializer != null && !s.equals(serializer)) {
-                            throw new RuntimeException("Can't have different serializer for multi-field");
+                            throw new ElasticSearchOsemException("Can't have different serializers for multi-field");
                         }
                         serializer = s;
                     }
@@ -199,7 +200,7 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
                     Class<? extends JsonDeserializer<?>> s = getDeserializer(property, a);
                     if (s != null) {
                         if (deserializer != null && !s.equals(deserializer)) {
-                            throw new RuntimeException("Can't have different deserializer for multi-field");
+                            throw new ElasticSearchOsemException("Can't have different deserializers for multi-field");
                         }
                         deserializer = s;
                     }
