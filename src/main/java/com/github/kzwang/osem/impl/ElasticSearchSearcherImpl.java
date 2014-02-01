@@ -149,7 +149,7 @@ public class ElasticSearchSearcherImpl implements ElasticSearchSearcher {
             getRequest.setRouting(routing);
         }
         GetResponse response = getRequest.get();
-        if (response == null || response.getSourceAsString() == null) {
+        if (!response.isExists()) {
             return null;
         }
         return objectProcessor.fromJsonString(response.getSourceAsString(), clazz);
