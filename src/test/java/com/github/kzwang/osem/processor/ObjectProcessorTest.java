@@ -4,6 +4,7 @@ package com.github.kzwang.osem.processor;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.kzwang.osem.model.TweetComment;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import com.github.kzwang.osem.model.Tweet;
@@ -62,6 +63,21 @@ public class ObjectProcessorTest extends AbstractOsemTest {
         tweetMap = jsonToMap(tweetJson);
         assertThat((String) tweetMap.get("image"), equalTo("BBCCDD"));
 
+    }
+
+    @Test
+    public void test_get_id(){
+        Tweet tweet = getRandomTweet();
+        Long id = (Long) objectProcessor.getIdValue(tweet);
+        assertThat(id, equalTo(tweet.getId()));
+    }
+
+    @Test
+    public void test_get_parent_id(){
+        Long tweetId = randomLong();
+        TweetComment tweetComment = getRandomTweetComment(tweetId);
+        String parentId = objectProcessor.getParentId(tweetComment);
+        assertThat(parentId, equalTo(tweetComment.getTweetId().toString()));
     }
 
 

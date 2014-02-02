@@ -165,8 +165,8 @@ public class ObjectProcessor {
         Object parentObject = object;
         for (String fieldName : fieldNames) {
             parentObject = OsemReflectionUtils.getFieldValue(parentObject, fieldName);
+            if (parentObject == null) return null;
         }
-        if (parentObject == null) return null;
         return parentObject.toString();
     }
 
