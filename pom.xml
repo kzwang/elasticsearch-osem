@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.kzwang</groupId>
     <artifactId>elasticsearch-osem</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>ElasticSearch OSEM</name>
     <description>Object/Search Engine Mapping for ElasticSearch</description>
@@ -153,27 +153,17 @@
                             <jvmOutputAction>pipe,warn</jvmOutputAction>
                             <leaveTemporary>true</leaveTemporary>
                             <listeners>
-                                <report-ant-xml mavenExtensions="true"
-                                                dir="${project.build.directory}/surefire-reports"/>
-                                <report-text
-                                        showThrowable="true"
-                                        showStackTraces="true"
-                                        showOutput="${tests.output}"
-                                        showStatusOk="false"
-                                        showStatusError="true"
-                                        showStatusFailure="true"
-                                        showStatusIgnored="true"
-                                        showSuiteSummary="true"
-                                        timestamps="false"/>
-                                <report-execution-times file="${basedir}/.local-execution-hints.log"/>
+                                <report-ant-xml mavenExtensions="true" dir="${project.build.directory}/surefire-reports" />
+                                <report-text showThrowable="true" showStackTraces="true" showOutput="${tests.output}" showStatusOk="false" showStatusError="true" showStatusFailure="true" showStatusIgnored="true" showSuiteSummary="true" timestamps="false" />
+                                <report-execution-times file="${basedir}/.local-execution-hints.log" />
                             </listeners>
                             <assertions>
-                                <enable/>
+                                <enable />
                             </assertions>
                             <parallelism>${tests.jvms}</parallelism>
                             <balancers>
                                 <execution-times>
-                                    <fileset dir="${basedir}" includes=".local-execution-hints.log"/>
+                                    <fileset dir="${basedir}" includes=".local-execution-hints.log" />
                                 </execution-times>
                             </balancers>
                             <includes>
