@@ -2,18 +2,18 @@
 
 Object Search Engine Mapping for ElasticSearch
 
-[![Build Status](https://travis-ci.org/kzwang/elasticsearch-osem.png?branch=master)](https://travis-ci.org/kzwang/elasticsearch-osem)
+[![Build Status](https://travis-ci.org/kzwang/elasticsearch-osem.png?branch=1.x)](https://travis-ci.org/kzwang/elasticsearch-osem)
 
 
 |           OSEM            |   elasticsearch   | Release date |
 |---------------------------|-------------------|--------------|
-| 1.0.1-SNAPSHOT (master)   |   0.90.10         |              |
+| 1.1.0-SNAPSHOT (master)   |   0.90.11         |              |
 | 1.0.0                     |   0.90.10         | 2014-02-03   |
 
 
 ## Example
 
-Please see [ElasticSearchOsemIntegrationTest.java](https://github.com/kzwang/elasticsearch-osem/blob/master/src/test/java/com/github/kzwang/osem/api/ElasticSearchOsemIntegrationTest.java) for more examples
+Please see [ElasticSearchOsemIntegrationTest.java](https://github.com/kzwang/elasticsearch-osem/blob/1.x/src/test/java/com/github/kzwang/osem/api/ElasticSearchOsemIntegrationTest.java) for more examples
 
 Create model:
 
