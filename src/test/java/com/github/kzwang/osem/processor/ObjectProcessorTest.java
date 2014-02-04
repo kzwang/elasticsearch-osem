@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.kzwang.osem.model.TweetComment;
+import org.elasticsearch.common.joda.Joda;
+import org.elasticsearch.common.joda.time.DateTime;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import com.github.kzwang.osem.model.Tweet;
@@ -42,10 +44,11 @@ public class ObjectProcessorTest extends AbstractOsemTest {
         Map<String, Object> tweetMap = jsonToMap(tweetJson);
 
         checkTweetEquals(tweetFromJson, tweet);
-        // check date
-        assertThat((String) tweetMap.get("tweetDate"), equalTo(new SimpleDateFormat("yyyy/MM/dd").format(tweet.getTweetDate())));
-        assertThat((String) tweetMap.get("tweetDatetime"), equalTo(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(tweet.getTweetDate())));
-
+        // test custom date serializer/deserializer
+        assertThat((String) tweetMap.get("tweetDate"), equalTo(Joda.forPattern("basic_date").printer().print(new DateTime(tweet.getTweetDate()))));
+        assertThat((String) tweetMap.get("tweetDatetime"), equalTo(Joda.forPattern("yyyy/MM/dd HH:mm:ss").printer().print(new DateTime(tweet.getTweetDate()))));
+        assertThat(((List<String>) tweetMap.get("specialDates")), hasSize(tweet.getSpecialDates().size()));
+        assertThat(((List<String>) tweetMap.get("specialDates")).get(0), equalTo(Joda.forPattern("basic_date_time_no_millis").printer().print(new DateTime(tweet.getSpecialDates().get(0)))));
     }
 
     @Test

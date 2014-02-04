@@ -10,8 +10,8 @@ public class User {
     private String userName;
 
     @IndexableProperties(properties = {
-            @IndexableProperty(name = "description", index = IndexEnum.ANALYZED),
-            @IndexableProperty(name = "untouched", index = IndexEnum.NOT_ANALYZED)
+            @IndexableProperty(index = IndexEnum.ANALYZED),
+            @IndexableProperty(name = "raw", index = IndexEnum.NOT_ANALYZED)
     })
     private String description;
 

@@ -45,6 +45,12 @@ public abstract class AbstractOsemTest extends RandomizedTest {
         }
         tweet.setMentionedUserList(userList);
 
+        List<Date> specialDates = new ArrayList<Date>();
+        for (int i = 0; i < randomIntBetween(10, 20); i ++) {
+            specialDates.add(new Date());
+        }
+        tweet.setSpecialDates(specialDates);
+
         return tweet;
     }
 

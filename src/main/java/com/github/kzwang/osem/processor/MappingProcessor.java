@@ -434,6 +434,14 @@ public class MappingProcessor {
             fieldMap.put("index", indexableProperty.index().toString().toLowerCase());
         }
 
+        if (indexableProperty.docValues()) {
+            fieldMap.put("doc_values", Boolean.TRUE);
+        }
+
+        if (indexableProperty.docValuesFormat() != DocValuesFormatEnum.NA) {
+            fieldMap.put("doc_values_format", indexableProperty.docValuesFormat().toString().toLowerCase());
+        }
+
         if (!indexableProperty.indexName().isEmpty()) {
             fieldMap.put("index_name", indexableProperty.indexName());
         }
@@ -498,6 +506,10 @@ public class MappingProcessor {
             fieldMap.put("ignore_malformed", Boolean.TRUE);
         }
 
+        if (!indexableProperty.coerce()) {
+            fieldMap.put("coerce", Boolean.FALSE);
+        }
+
         if (indexableProperty.postingsFormat() != PostingsFormatEnum.NA) {
             fieldMap.put("postings_format", indexableProperty.postingsFormat().toString().toLowerCase());
         }
@@ -516,6 +528,10 @@ public class MappingProcessor {
 
         if (!indexableProperty.format().isEmpty()) {
             fieldMap.put("format", indexableProperty.format());
+        }
+
+        if (indexableProperty.copyTo().length > 0) {
+            fieldMap.put("copy_to", Lists.newArrayList(indexableProperty.copyTo()));
         }
 
         if (indexableProperty.geoPointLatLon()) {
@@ -590,7 +606,7 @@ public class MappingProcessor {
             fieldName = indexableComponent.name();
         }
 
-        Preconditions.checkNotNull(fieldName, "Unable to find field name");
+        Preconditions.checkNotNull(fieldName, "Unable to find field name for IndexableComponent");
 
         Map<String, Object> fieldMap = getIndexableComponentMapping(accessibleObject, indexableComponent);
         if (fieldMap != null) {
@@ -644,25 +660,37 @@ public class MappingProcessor {
         if (accessibleObject instanceof Field) {
             fieldName = ((Field) accessibleObject).getName();
         }
-        if (indexableProperties.name() != null && !indexableProperties.name().isEmpty()) {
+        if (!indexableProperties.name().isEmpty()) {
             fieldName = indexableProperties.name();
         }
 
+        Preconditions.checkNotNull(fieldName, "Unable to find field name for IndexableProperties");
+
         Map<String, Object> multiFieldMap = Maps.newHashMap();
-        multiFieldMap.put("type", "multi_field");
+        multiFieldMap.put("type", getFieldType(indexableProperties.type(), accessibleObject));
 
         if (indexableProperties.path() != MultiFieldPathEnum.NA) {
             multiFieldMap.put("path", indexableProperties.path().toString().toLowerCase());
         }
 
+        boolean emptyNameProcessed = false;
         Map<String, Object> fieldsMap = Maps.newHashMap();
         for (IndexableProperty property : indexableProperties.properties()) {
             String propertyName = property.name();
-            if (propertyName == null || propertyName.isEmpty()) {
-                throw new ElasticSearchOsemException("Field name cannot be empty in multi-field");
+            if (propertyName.isEmpty()) {
+                if (!emptyNameProcessed) {
+                    emptyNameProcessed = true;
+                    propertyName = fieldName;
+                } else {
+                    throw new ElasticSearchOsemException("Field name cannot be empty in multi-field");
+                }
             }
             Map<String, Object> fieldMap = getIndexablePropertyMapping(accessibleObject, property);
-            fieldsMap.put(propertyName, fieldMap);
+            if (propertyName.equals(fieldName)) {
+                multiFieldMap.putAll(fieldMap);
+            } else {
+                fieldsMap.put(propertyName, fieldMap);
+            }
         }
         multiFieldMap.put("fields", fieldsMap);
         propertiesMap.put(fieldName, multiFieldMap);

@@ -84,9 +84,9 @@ public interface ElasticSearchSearcher {
     /**
      * Get an object by id
      *
-     * @param clazz class of the object
-     * @param id    id of the object
-     * @param routing    routing of the object
+     * @param clazz   class of the object
+     * @param id      id of the object
+     * @param routing routing of the object
      * @return object from ElasticSearch
      */
     public <T> T getById(Class<T> clazz, String id, @Nullable String routing);

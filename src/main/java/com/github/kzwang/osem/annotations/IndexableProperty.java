@@ -44,6 +44,16 @@ public @interface IndexableProperty {
     IndexEnum index() default IndexEnum.NA;
 
     /**
+     * "doc_values" field in mapping
+     */
+    boolean docValues() default false;
+
+    /**
+     * "doc_values_format" field in mapping
+     */
+    DocValuesFormatEnum docValuesFormat() default DocValuesFormatEnum.NA;
+
+    /**
      * "term_vector" field in mapping
      */
     TermVectorEnum termVector() default TermVectorEnum.NA;
@@ -114,12 +124,25 @@ public @interface IndexableProperty {
     boolean ignoreMalformed() default false;
 
     /**
+     * "coerce" field in mapping
+     */
+    boolean coerce() default true;
+
+    /**
      * format of Date
      * "format"  field in mapping
+     * if multiple format specified, will use the first
      *
      * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-date-format.html">Date Format</a>
      */
     String format() default "";
+
+    /**
+     * "copy_to" field in mapping
+     *
+     * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.x/mapping-core-types.html#_copy_to_field">Copy to field</a>
+     */
+    String[] copyTo() default {};
 
     /**
      * "postings_format" field in mapping

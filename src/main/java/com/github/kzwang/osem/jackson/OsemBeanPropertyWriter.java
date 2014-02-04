@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.PropertySerializerMap;
 import com.github.kzwang.osem.annotations.IndexableComponent;
+import com.github.kzwang.osem.annotations.IndexableProperties;
 import com.github.kzwang.osem.annotations.IndexableProperty;
 
 
@@ -28,11 +29,15 @@ public class OsemBeanPropertyWriter extends BeanPropertyWriter {
                 // check has custom serializer first
                 IndexableProperty indexableProperty = _member.getAnnotation(IndexableProperty.class);
                 IndexableComponent indexableComponent = _member.getAnnotation(IndexableComponent.class);
+                IndexableProperties indexableProperties = _member.getAnnotation(IndexableProperties.class);
                 if (indexableProperty != null && indexableProperty.serializer() != JsonSerializer.class) {
                     JsonSerializer serializer = indexableProperty.serializer().newInstance();
                     serializer.serialize(null, jgen, prov);
                 } else if (indexableComponent != null && indexableComponent.serializer() != JsonSerializer.class) {
                     JsonSerializer serializer = indexableComponent.serializer().newInstance();
+                    serializer.serialize(null, jgen, prov);
+                } else if (indexableProperties != null && indexableProperties.serializer() != JsonSerializer.class) {
+                    JsonSerializer serializer = indexableProperties.serializer().newInstance();
                     serializer.serialize(null, jgen, prov);
                 } else {
                     _nullSerializer.serialize(null, jgen, prov);

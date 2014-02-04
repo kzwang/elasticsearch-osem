@@ -158,15 +158,19 @@ public @interface Indexable {
     /**
      * "name" in "_boost"
      *
-     * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-boost-field.html">Mapping boost field</a>
+     * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.x/mapping-boost-field.html">Mapping boost field</a>
+     * @deprecated deprecated in ElasticSearch 1.0.0.rc1
      */
+    @Deprecated
     String boostFieldName() default "";
 
     /**
      * "name" in "_boost"
      *
-     * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-boost-field.html">Mapping boost field</a>
+     * @see <a href="http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.x/mapping-boost-field.html">Mapping boost field</a>
+     * @deprecated deprecated in ElasticSearch 1.0.0.rc1
      */
+    @Deprecated
     double boostFieldNullValue() default Double.MIN_VALUE;
 
     /**

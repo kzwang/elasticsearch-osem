@@ -109,7 +109,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         if (logger.isDebugEnabled()) {
             logger.debug("Get mapping for class: {}, type: {}", clazz.getSimpleName(), typeName);
         }
-        ClusterStateResponse response = client.admin().cluster().prepareState().setFilterIndices(getIndexName()).get();
+        ClusterStateResponse response = client.admin().cluster().prepareState().setIndices(getIndexName()).get();
         MetaData metaData = response.getState().metaData();
         if (metaData.iterator().hasNext()) {
             IndexMetaData indexMetaData = metaData.iterator().next();

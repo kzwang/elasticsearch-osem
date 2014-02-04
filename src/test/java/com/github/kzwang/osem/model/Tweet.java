@@ -3,6 +3,7 @@ package com.github.kzwang.osem.model;
 import com.github.kzwang.osem.annotations.*;
 import com.github.kzwang.osem.serializer.ImageSerializer;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -18,13 +19,13 @@ public class Tweet {
     @IndexableComponent
     private User user;
 
-    @IndexableProperty(store = true)
+    @IndexableProperty(store = true, coerce = false, copyTo = {"image"})
     private String tweetString;
 
-    @IndexableProperty(format = "yyyy/MM/dd")
+    @IndexableProperty(format = "basic_date||yyyy/MM/dd")
     private Date tweetDate;
 
-    @IndexableProperty(serializer = ImageSerializer.class, jsonInclude = JsonInclude.ALWAYS)
+    @IndexableProperty(serializer = ImageSerializer.class, jsonInclude = JsonInclude.ALWAYS, docValuesFormat = DocValuesFormatEnum.DISK)
     private String image;
 
     @IndexableProperty(analyzer = "standard")
@@ -35,6 +36,9 @@ public class Tweet {
 
     @IndexableProperty
     private Boolean flagged;
+
+    @IndexableProperty(format = "basic_date_time_no_millis")
+    private List<Date> specialDates;
 
     public Long getId() {
         return id;
@@ -103,5 +107,13 @@ public class Tweet {
 
     public void setFlagged(Boolean flagged) {
         this.flagged = flagged;
+    }
+
+    public List<Date> getSpecialDates() {
+        return specialDates;
+    }
+
+    public void setSpecialDates(List<Date> specialDates) {
+        this.specialDates = specialDates;
     }
 }

@@ -1,20 +1,19 @@
 package com.github.kzwang.osem.jackson;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.introspect.*;
-import com.fasterxml.jackson.databind.ser.std.RawSerializer;
 import com.github.kzwang.osem.annotations.*;
+import com.github.kzwang.osem.converter.DateDeserializer;
+import com.github.kzwang.osem.converter.DateSerializer;
 import com.github.kzwang.osem.converter.RawJsonDeSerializer;
-import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.Collection;
 import java.util.Date;
-import java.util.TimeZone;
 
 
 /**
@@ -73,6 +72,11 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
         if (component != null && component.jsonInclude() != com.github.kzwang.osem.annotations.JsonInclude.DEFAULT) {
             return JsonInclude.Include.valueOf(component.jsonInclude().toString());
         }
+
+        IndexableProperties properties = a.getAnnotation(IndexableProperties.class);
+        if (properties != null && properties.jsonInclude() != com.github.kzwang.osem.annotations.JsonInclude.DEFAULT) {
+            return JsonInclude.Include.valueOf(properties.jsonInclude().toString());
+        }
         return defValue;
     }
 
@@ -102,57 +106,64 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
         return new PropertyName(name);
     }
 
-
-    @Override
-    public JsonFormat.Value findFormat(Annotated annotated) {
-        if (annotated instanceof AnnotatedField || annotated instanceof AnnotatedMethod) {
-            IndexableProperty property = annotated.getAnnotation(IndexableProperty.class);
-            if (property != null && property.format() != null && !property.format().isEmpty()) {  // has format
-                Class clazz = annotated.getRawType();
-                if (Collection.class.isAssignableFrom(clazz)) {
-                    ParameterizedType type = (ParameterizedType) annotated.getGenericType();
-                    clazz = (Class) type.getActualTypeArguments()[0];
-                }
-                if (clazz.equals(Date.class) || property.type().equals(TypeEnum.DATE)) { // handle date
-                    JsonFormat.Value format = new JsonFormat.Value().withShape(JsonFormat.Shape.STRING).withPattern(property.format()).withTimeZone(TimeZone.getDefault());
-                    return format;
-                }
-            }
+    private boolean isDate(Annotated annotated) {
+        Class clazz = annotated.getRawType();
+        if (Collection.class.isAssignableFrom(clazz)) {
+            ParameterizedType type = (ParameterizedType) annotated.getGenericType();
+            clazz = (Class) type.getActualTypeArguments()[0];
         }
-        return super.findFormat(annotated);
+        if (clazz.equals(Date.class)) {
+            return true;
+        }
+        return false;
     }
-
 
     @Override
     public Object findSerializer(Annotated a) {
-        if (a instanceof AnnotatedField || a instanceof AnnotatedMethod) {
+        Class clazz = a.getRawType();
+        if (Collection.class.isAssignableFrom(clazz)) {
+            return null;  // Collection should be handled in findContentSerializer(Annotated a)
+        }
+        Object serializer = findSerializerToUse(a);
+        if (serializer != null) {
+            return serializer;
+        }
+        return super.findSerializer(a);
+    }
 
+    @Override
+    public Class<? extends JsonSerializer<?>> findContentSerializer(Annotated a) {
+        Class clazz = a.getRawType();
+        if (!Collection.class.isAssignableFrom(clazz)) {
+            return null;  // Only handle Collection
+        }
+        Object serializer = findSerializerToUse(a);
+        if (serializer != null) {
+            return (Class<? extends JsonSerializer<?>>) serializer;
+        }
+        return super.findContentSerializer(a);
+    }
+
+    private Object findSerializerToUse(Annotated a) {
+        if (a instanceof AnnotatedField || a instanceof AnnotatedMethod) {
             IndexableComponent indexableComponent = a.getAnnotation(IndexableComponent.class);
             if (indexableComponent != null && indexableComponent.serializer() != JsonSerializer.class) {
                 return indexableComponent.serializer();
             }
 
             IndexableProperty indexableProperty = a.getAnnotation(IndexableProperty.class);
-            Object indexablePropertySerializer = getSerializer(indexableProperty, a);
-            if (indexablePropertySerializer != null) {
-                return indexablePropertySerializer;
-            }
+            if (indexableProperty != null) {
+                if (indexableProperty.serializer() != JsonSerializer.class) {
+                    return indexableProperty.serializer();
+                }
+                if (isDate(a)) {  // use custom date serializer
+                    return DateSerializer.class;
+                }
 
+            }
             IndexableProperties indexableProperties = a.getAnnotation(IndexableProperties.class);
-            if (indexableProperties != null && indexableProperties.properties().length > 0) {
-                Object serializer = null;
-                for (IndexableProperty property : indexableProperties.properties()) {
-                    Object s = getSerializer(property, a);
-                    if (s != null) {
-                        if (serializer != null && !s.equals(serializer)) {
-                            throw new ElasticSearchOsemException("Can't have different serializers for multi-field");
-                        }
-                        serializer = s;
-                    }
-                }
-                if (serializer != null) {
-                    return serializer;
-                }
+            if (indexableProperties != null && indexableProperties.serializer() != JsonSerializer.class) {
+                return indexableProperties.serializer();
             }
 
         } else if (a instanceof AnnotatedClass) {  // handle class
@@ -161,73 +172,67 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
                 return indexable.serializer();
             }
         }
-
-
-        return super.findSerializer(a);
-    }
-
-    private Object getSerializer(IndexableProperty indexableProperty, Annotated a) {
-        if (indexableProperty != null && indexableProperty.serializer() != JsonSerializer.class) {
-            return indexableProperty.serializer();
-        }
-        if (indexableProperty != null && indexableProperty.type().equals(TypeEnum.JSON)) {
-            Class<?> cls = a.getRawType();
-            return new RawSerializer<Object>(cls);
-        }
         return null;
     }
 
-
     @Override
     public Class<? extends JsonDeserializer<?>> findDeserializer(Annotated a) {
-        if (a instanceof AnnotatedField || a instanceof AnnotatedMethod) {  // handle field
+        Class clazz = a.getRawType();
+        if (Collection.class.isAssignableFrom(clazz)) {
+            return null;  // Collection should be handled in findContentDeserializer(Annotated a)
+        }
+        Class<? extends JsonDeserializer<?>> deserializer = findDeserializerToUse(a);
+        if (deserializer != null) {
+            return deserializer;
+        }
 
+        return super.findDeserializer(a);
+    }
+
+    @Override
+    public Class<? extends JsonDeserializer<?>> findContentDeserializer(Annotated a) {
+        Class clazz = a.getRawType();
+        if (!Collection.class.isAssignableFrom(clazz)) {
+            return null;  // Only handle Collection
+        }
+        Class<? extends JsonDeserializer<?>> deserializer = findDeserializerToUse(a);
+        if (deserializer != null) {
+            return deserializer;
+        }
+        return super.findContentDeserializer(a);
+    }
+
+    private Class<? extends JsonDeserializer<?>> findDeserializerToUse(Annotated a) {
+        if (a instanceof AnnotatedField || a instanceof AnnotatedMethod) {
             IndexableComponent indexableComponent = a.getAnnotation(IndexableComponent.class);
             if (indexableComponent != null && indexableComponent.deserializer() != JsonDeserializer.class) {
                 return (Class<? extends JsonDeserializer<?>>) indexableComponent.deserializer();
             }
 
             IndexableProperty indexableProperty = a.getAnnotation(IndexableProperty.class);
-            Class<? extends JsonDeserializer<?>> indexablePropertyDeserializer = getDeserializer(indexableProperty, a);
-            if (indexablePropertyDeserializer != null) {
-                return indexablePropertyDeserializer;
+            if (indexableProperty != null) {
+                if (indexableProperty.deserializer() != JsonDeserializer.class) {
+                    return (Class<? extends JsonDeserializer<?>>) indexableProperty.deserializer();
+                }
+                if (isDate(a)) { // use custom date deserializer
+                    return DateDeserializer.class;
+                }
+                if (indexableProperty.type().equals(TypeEnum.JSON)) {  // use custom deserializer for raw json field
+                    return RawJsonDeSerializer.class;
+                }
             }
 
             IndexableProperties indexableProperties = a.getAnnotation(IndexableProperties.class);
-            if (indexableProperties != null && indexableProperties.properties().length > 0) {
-                Class<? extends JsonDeserializer<?>> deserializer = null;
-                for (IndexableProperty property : indexableProperties.properties()) {
-                    Class<? extends JsonDeserializer<?>> s = getDeserializer(property, a);
-                    if (s != null) {
-                        if (deserializer != null && !s.equals(deserializer)) {
-                            throw new ElasticSearchOsemException("Can't have different deserializers for multi-field");
-                        }
-                        deserializer = s;
-                    }
-                }
-                if (deserializer != null) {
-                    return deserializer;
-                }
+            if (indexableProperties != null && indexableProperties.deserializer() != JsonDeserializer.class) {
+                return (Class<? extends JsonDeserializer<?>>) indexableProperties.deserializer();
             }
-
-
         } else if (a instanceof AnnotatedClass) {  // handle class
             Indexable indexable = a.getAnnotation(Indexable.class);
             if (indexable != null && indexable.deserializer() != JsonDeserializer.class) {
                 return (Class<? extends JsonDeserializer<?>>) indexable.deserializer();
             }
         }
-
-        return super.findDeserializer(a);
-    }
-
-    private Class<? extends JsonDeserializer<?>> getDeserializer(IndexableProperty indexableProperty, Annotated a) {
-        if (indexableProperty != null && indexableProperty.deserializer() != JsonDeserializer.class) {
-            return (Class<? extends JsonDeserializer<?>>) indexableProperty.deserializer();
-        }
-        if (indexableProperty != null && indexableProperty.type().equals(TypeEnum.JSON)) {
-            return RawJsonDeSerializer.class;
-        }
         return null;
     }
+
 }
