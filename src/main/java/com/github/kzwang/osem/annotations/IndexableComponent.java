@@ -40,7 +40,9 @@ public @interface IndexableComponent {
 
     /**
      * "path" field in mapping
+     * @deprecated Deprecated in Elasticsearch 1.0.0
      */
+    @Deprecated
     ObjectFieldPathEnum path() default ObjectFieldPathEnum.NA;
 
     /**

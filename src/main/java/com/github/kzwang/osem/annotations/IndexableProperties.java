@@ -34,7 +34,9 @@ public @interface IndexableProperties {
 
     /**
      * "path" field in mapping
+     * @deprecated Deprecated in Elasticsearch 1.0.0
      */
+    @Deprecated
     MultiFieldPathEnum path() default MultiFieldPathEnum.NA;
 
 
