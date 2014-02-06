@@ -20,6 +20,8 @@ public class Tweet {
     private User user;
 
     @IndexableProperty(store = true, coerce = false, copyTo = {"image"})
+    @IndexablePropertyFieldData(loading = FieldDataLoading.EAGER, format = FieldDataFormat.FST, filterRegexPattern = "*",
+                                filterFrequencyMin = "0.001", filterFrequencyMax = "0.1", filterFrequencyMinSegmentSize = "500")
     private String tweetString;
 
     @IndexableProperty(format = "basic_date||yyyy/MM/dd")
