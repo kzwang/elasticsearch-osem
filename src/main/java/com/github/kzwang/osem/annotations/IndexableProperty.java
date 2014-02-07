@@ -225,6 +225,38 @@ public @interface IndexableProperty {
     float geoShapeDistanceErrorPct() default Float.MIN_VALUE;
 
 
+    // for fielddata
+    /**
+     * set "format" in fielddata
+     */
+    FieldDataFormat fieldDataFormat() default FieldDataFormat.NA;
+
+    /**
+     * set "loading" in fielddata
+     */
+    FieldDataLoading fieldDataLoading() default FieldDataLoading.NA;
+
+    /**
+     * "min" in fielddata.filter.frequency
+     */
+    String fieldDataFilterFrequencyMin() default "";
+
+    /**
+     * "max" in fielddata.filter.frequency
+     */
+    String fieldDataFilterFrequencyMax() default "";
+
+    /**
+     * "min_segment_size" in fielddata.filter.frequency
+     */
+    String fieldDataFilterFrequencyMinSegmentSize() default "";
+
+    /**
+     * "pattern" in fielddata.filter.regex
+     */
+    String fieldDataFilterRegexPattern() default "";
+
+
     /**
      * Mapping json string, will convert to JSON object and send to ElasticSearch directly
      */

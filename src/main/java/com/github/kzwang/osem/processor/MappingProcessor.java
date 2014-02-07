@@ -590,13 +590,40 @@ public class MappingProcessor {
             fieldMap.put("distance_error_pct", indexableProperty.geoShapeDistanceErrorPct());
         }
 
-        Map<String, Object> fieldDataMap = getFieldDataMap(accessibleObject);
+        Map<String, Object> fieldDataMap = getFieldDataMap(indexableProperty);
         if (fieldDataMap != null && !fieldDataMap.isEmpty()) {
             fieldMap.put("fielddata", fieldDataMap);
         }
 
         return fieldMap;
+    }
 
+    private static Map<String, Object> getFieldDataMap(IndexableProperty indexableProperty) {
+        Map<String, Object> fieldDataMap = Maps.newHashMap();
+        if (!indexableProperty.fieldDataFormat().equals(FieldDataFormat.NA)) {
+            fieldDataMap.put("format", indexableProperty.fieldDataFormat().toString().toLowerCase());
+        }
+
+        if (!indexableProperty.fieldDataLoading().equals(FieldDataLoading.NA)) {
+            fieldDataMap.put("loading", indexableProperty.fieldDataLoading().toString().toLowerCase());
+        }
+
+        if (!indexableProperty.fieldDataFilterFrequencyMin().isEmpty()) {
+            fieldDataMap.put("filter.frequency.min", indexableProperty.fieldDataFilterFrequencyMin());
+        }
+
+        if (!indexableProperty.fieldDataFilterFrequencyMax().isEmpty()) {
+            fieldDataMap.put("filter.frequency.max", indexableProperty.fieldDataFilterFrequencyMax());
+        }
+
+        if (!indexableProperty.fieldDataFilterFrequencyMinSegmentSize().isEmpty()) {
+            fieldDataMap.put("filter.frequency.min_segment_size", indexableProperty.fieldDataFilterFrequencyMinSegmentSize());
+        }
+
+        if (!indexableProperty.fieldDataFilterRegexPattern().isEmpty()) {
+            fieldDataMap.put("filter.regex.pattern", indexableProperty.fieldDataFilterRegexPattern());
+        }
+        return fieldDataMap;
     }
 
     private static void processIndexableComponent(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
@@ -698,37 +725,6 @@ public class MappingProcessor {
         }
         multiFieldMap.put("fields", fieldsMap);
         propertiesMap.put(fieldName, multiFieldMap);
-    }
-
-    private static Map<String, Object> getFieldDataMap(AccessibleObject accessibleObject) {
-        Map<String, Object> fieldDataMap = Maps.newHashMap();
-        IndexablePropertyFieldData indexablePropertyFieldData = accessibleObject.getAnnotation(IndexablePropertyFieldData.class);
-        if (indexablePropertyFieldData != null) {
-            if (!indexablePropertyFieldData.format().equals(FieldDataFormat.NA)) {
-                fieldDataMap.put("format", indexablePropertyFieldData.format().toString().toLowerCase());
-            }
-
-            if (!indexablePropertyFieldData.loading().equals(FieldDataLoading.NA)) {
-                fieldDataMap.put("loading", indexablePropertyFieldData.loading().toString().toLowerCase());
-            }
-
-            if (!indexablePropertyFieldData.filterFrequencyMin().isEmpty()) {
-                fieldDataMap.put("filter.frequency.min", indexablePropertyFieldData.filterFrequencyMin());
-            }
-
-            if (!indexablePropertyFieldData.filterFrequencyMax().isEmpty()) {
-                fieldDataMap.put("filter.frequency.max", indexablePropertyFieldData.filterFrequencyMax());
-            }
-
-            if (!indexablePropertyFieldData.filterFrequencyMinSegmentSize().isEmpty()) {
-                fieldDataMap.put("filter.frequency.min_segment_size", indexablePropertyFieldData.filterFrequencyMinSegmentSize());
-            }
-
-            if (!indexablePropertyFieldData.filterRegexPattern().isEmpty()) {
-                fieldDataMap.put("filter.regex.pattern", indexablePropertyFieldData.filterRegexPattern());
-            }
-        }
-        return fieldDataMap;
     }
 
     private static String getFieldType(TypeEnum fieldTypeEnum, AccessibleObject accessibleObject) {
