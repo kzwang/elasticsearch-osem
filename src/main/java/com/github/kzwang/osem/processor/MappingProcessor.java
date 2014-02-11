@@ -6,15 +6,12 @@ import com.github.kzwang.osem.cache.OsemCache;
 import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 import com.github.kzwang.osem.utils.OsemReflectionUtils;
 import com.google.common.base.CaseFormat;
-import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.collect.Maps;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.common.xcontent.XContentType;
 
 import java.io.IOException;
 import java.lang.reflect.AccessibleObject;
@@ -23,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
 
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.reflections.ReflectionUtils.*;
 
 /**
@@ -63,11 +61,11 @@ public class MappingProcessor {
         Map<String, Object> mappingMap = getMapping(clazz);
         if (mappingMap != null) {
             try {
-                XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON);
+                XContentBuilder builder = jsonBuilder();
                 builder.map(mappingMap);
                 return builder.string();
             } catch (IOException e) {
-                logger.error("Failed to convert mapping to JSON string", e);
+                throw new ElasticSearchOsemException("Failed to convert mapping to JSON string", e);
             }
         }
         return null;
@@ -144,7 +142,9 @@ public class MappingProcessor {
         Map<String, Object> objectMap = Maps.newHashMap();
 
         Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
-        Preconditions.checkNotNull(indexable, "Class {} is not Indexable", clazz.getName());
+        if (indexable == null) {
+            throw new ElasticSearchOsemException("Class " + clazz.getName() + " is not Indexable");
+        }
 
         if (!indexable.indexAnalyzer().isEmpty()) {
             objectMap.put("index_analyzer", indexable.indexAnalyzer());
@@ -397,7 +397,9 @@ public class MappingProcessor {
 
     private static void processIndexableProperty(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
         IndexableProperty indexableProperty = accessibleObject.getAnnotation(IndexableProperty.class);
-        Preconditions.checkNotNull(indexableProperty, "Unable to find annotation IndexableProperty");
+        if (indexableProperty == null) {
+            throw new ElasticSearchOsemException("Unable to find annotation IndexableProperty");
+        }
         String fieldName = null;
         if (accessibleObject instanceof Field) {
             fieldName = ((Field) accessibleObject).getName();
@@ -405,8 +407,9 @@ public class MappingProcessor {
         if (indexableProperty.name() != null && !indexableProperty.name().isEmpty()) {
             fieldName = indexableProperty.name();
         }
-
-        Preconditions.checkNotNull(fieldName, "Unable to find field name");
+        if (fieldName == null) {
+            throw new ElasticSearchOsemException("Unable to find field name");
+        }
 
         Map<String, Object> fieldMap = getIndexablePropertyMapping(accessibleObject, indexableProperty);
         if (fieldMap != null) {
@@ -628,7 +631,9 @@ public class MappingProcessor {
 
     private static void processIndexableComponent(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
         IndexableComponent indexableComponent = accessibleObject.getAnnotation(IndexableComponent.class);
-        Preconditions.checkNotNull(indexableComponent, "Unable to find annotation IndexableComponent");
+        if (indexableComponent == null) {
+            throw new ElasticSearchOsemException("Unable to find annotation IndexableComponent");
+        }
         String fieldName = null;
         if (accessibleObject instanceof Field) {
             fieldName = ((Field) accessibleObject).getName();
@@ -636,8 +641,9 @@ public class MappingProcessor {
         if (indexableComponent.name() != null && !indexableComponent.name().isEmpty()) {
             fieldName = indexableComponent.name();
         }
-
-        Preconditions.checkNotNull(fieldName, "Unable to find field name for IndexableComponent");
+        if (fieldName == null) {
+            throw new ElasticSearchOsemException("Unable to find field name for IndexableComponent");
+        }
 
         Map<String, Object> fieldMap = getIndexableComponentMapping(accessibleObject, indexableComponent);
         if (fieldMap != null) {
@@ -652,7 +658,9 @@ public class MappingProcessor {
         } else if (accessibleObject instanceof Method) {
             fieldClazz = OsemReflectionUtils.getGenericType((Method) accessibleObject);
         }
-        Preconditions.checkNotNull(fieldClazz, "Unknown AccessibleObject type");
+        if (fieldClazz == null) {
+            throw new ElasticSearchOsemException("Unknown AccessibleObject type");
+        }
 
         Map<String, Object> fieldMap = Maps.newHashMap();
         fieldMap.put("properties", getPropertiesMap(fieldClazz));
@@ -684,8 +692,12 @@ public class MappingProcessor {
 
     private static void processIndexableProperties(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
         IndexableProperties indexableProperties = accessibleObject.getAnnotation(IndexableProperties.class);
-        Preconditions.checkNotNull(indexableProperties, "Unable to find annotation IndexableProperties");
-        Preconditions.checkArgument(indexableProperties.properties().length > 0, "IndexableProperties must have at lease one IndexableProperty");
+        if (indexableProperties == null) {
+            throw new ElasticSearchOsemException("Unable to find annotation IndexableProperties");
+        }
+        if (indexableProperties.properties().length < 1) {
+            throw new ElasticSearchOsemException("IndexableProperties must have at lease one IndexableProperty");
+        }
 
         String fieldName = null;
         if (accessibleObject instanceof Field) {
@@ -695,7 +707,9 @@ public class MappingProcessor {
             fieldName = indexableProperties.name();
         }
 
-        Preconditions.checkNotNull(fieldName, "Unable to find field name for IndexableProperties");
+        if (fieldName == null) {
+            throw new ElasticSearchOsemException("Unable to find field name for IndexableProperties");
+        }
 
         Map<String, Object> multiFieldMap = Maps.newHashMap();
         multiFieldMap.put("type", getFieldType(indexableProperties.type(), accessibleObject));
@@ -737,7 +751,9 @@ public class MappingProcessor {
             } else if (accessibleObject instanceof Method) {
                 fieldClass = OsemReflectionUtils.getGenericType((Method) accessibleObject);
             }
-            Preconditions.checkNotNull(fieldClass, "Unknown AccessibleObject type");
+            if (fieldClass == null) {
+                throw new ElasticSearchOsemException("Unknown AccessibleObject type");
+            }
             fieldType = fieldClass.getSimpleName().toLowerCase();
         } else {
             fieldType = fieldTypeEnum.toString().toLowerCase();

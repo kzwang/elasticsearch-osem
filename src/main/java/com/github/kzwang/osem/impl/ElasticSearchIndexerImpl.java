@@ -3,6 +3,7 @@ package com.github.kzwang.osem.impl;
 import com.github.kzwang.osem.api.ElasticSearchIndexer;
 import com.github.kzwang.osem.cache.CacheType;
 import com.github.kzwang.osem.cache.OsemCache;
+import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 import com.github.kzwang.osem.processor.MappingProcessor;
 import com.github.kzwang.osem.processor.ObjectProcessor;
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
@@ -132,11 +133,14 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         Class objectClass = object.getClass();
         String typeName = MappingProcessor.getIndexTypeName(objectClass);
         Object objectId = objectProcessor.getIdValue(object);
-        Preconditions.checkNotNull(objectId, "Object id cannot be null");
-        String objectJson = objectProcessor.toJsonString(object);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Get index object request, type:{}, id: {}, content: {}", typeName, objectId, objectJson);
+        if (objectId == null) {
+            throw new ElasticSearchOsemException("Unable to find object id");
         }
+
+        String objectJson = objectProcessor.toJsonString(object);
+
+        logger.debug("Get index object request, type:{}, id: {}, content: {}", typeName, objectId, objectJson);
+
         if (!cache.isExist(CacheType.MAPPING, objectClass)) {  // check mapping exist in cache or not
             if (getMapping(objectClass) == null) {  // mapping not exist on server
                 createMapping(objectClass);  // create mapping first
@@ -163,9 +167,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     @Override
     public BulkResponse bulkIndex(Object... objects) {
         BulkRequestBuilder bulkRequest = client.prepareBulk();
-        if (logger.isDebugEnabled()) {
-            logger.debug("Bulk index {} objects", objects.length);
-        }
+        logger.debug("Bulk index {} objects", objects.length);
         for (Object object : objects) {
             if (object != null) {
                 if (object instanceof IndexRequestBuilder) {
@@ -182,10 +184,10 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     private DeleteRequestBuilder getDeleteRequest(Object object) {
         String typeName = MappingProcessor.getIndexTypeName(object.getClass());
         Object objectId = objectProcessor.getIdValue(object);
-        Preconditions.checkNotNull(objectId, "Object id cannot be null");
-        if (logger.isDebugEnabled()) {
-            logger.debug("Get delete object request, type:{}, id: {}", typeName, objectId);
+        if (objectId == null) {
+            throw new ElasticSearchOsemException("Unable to find object id");
         }
+        logger.debug("Get delete object request, type:{}, id: {}", typeName, objectId);
         DeleteRequestBuilder deleteRequestBuilder = client.prepareDelete(getIndexName(), typeName, objectId.toString());
         String routing = objectProcessor.getRoutingId(object);
         if (routing != null) {
@@ -207,9 +209,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     @Override
     public BulkResponse bulkDelete(Object... objects) {
         BulkRequestBuilder bulkRequest = client.prepareBulk();
-        if (logger.isDebugEnabled()) {
-            logger.debug("Bulk delete {} objects", objects.length);
-        }
+        logger.debug("Bulk delete {} objects", objects.length);
         for (Object object : objects) {
             if (object != null) {
                 if (object instanceof DeleteRequestBuilder) {
@@ -237,9 +237,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public CreateIndexResponse createIndex() {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Create index: {}", getIndexName());
-        }
+        logger.debug("Create index: {}", getIndexName());
         if (!indexExist()) {
             return client.admin().indices().prepareCreate(getIndexName()).get();
         }
@@ -250,9 +248,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public DeleteIndexResponse deleteIndex() {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Delete index: {}", getIndexName());
-        }
+        logger.debug("Delete index: {}", getIndexName());
         if (indexExist()) {
             return client.admin().indices().prepareDelete(getIndexName()).get();
         }
@@ -262,25 +258,19 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public RefreshResponse refreshIndex() {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Refresh index: {}", getIndexName());
-        }
+        logger.debug("Refresh index: {}", getIndexName());
         return client.admin().indices().prepareRefresh(getIndexName()).get();
     }
 
     @Override
     public IndicesAliasesResponse addAlias(String aliasName) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Add alias {} to index: {}", aliasName, getIndexName());
-        }
+        logger.debug("Add alias {} to index: {}", aliasName, getIndexName());
         return client.admin().indices().prepareAliases().addAlias(getIndexName(), aliasName).get();
     }
 
     @Override
     public IndicesAliasesResponse removeAlias(String aliasName) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Remove alias {} from index: {}", aliasName, getIndexName());
-        }
+        logger.debug("Remove alias {} from index: {}", aliasName, getIndexName());
         return client.admin().indices().prepareAliases().removeAlias(getIndexName(), aliasName).get();
     }
 

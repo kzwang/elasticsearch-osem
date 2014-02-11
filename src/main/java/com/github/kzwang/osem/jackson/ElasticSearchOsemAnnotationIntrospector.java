@@ -37,27 +37,22 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
             return super.findNameForSerialization(a);
         }
 
-        String name = null;
-
         IndexableProperty property = a.getAnnotation(IndexableProperty.class);
-        if (property != null) {
-            name = property.name();
+        if (property != null && !property.name().isEmpty()) {
+            return new PropertyName(property.name());
         }
 
         IndexableComponent component = a.getAnnotation(IndexableComponent.class);
-        if (component != null && name == null) {
-            name = component.name();
+        if (component != null && !component.name().isEmpty()) {
+            return new PropertyName(component.name());
         }
 
         IndexableProperties properties = a.getAnnotation(IndexableProperties.class);
-        if (properties != null && name == null) {
-            name = properties.name();
+        if (properties != null && !properties.name().isEmpty()) {
+            return new PropertyName(properties.name());
         }
 
-        if (name == null || name.isEmpty()) { // empty String means 'default'
-            return PropertyName.USE_DEFAULT;
-        }
-        return new PropertyName(name);
+        return PropertyName.USE_DEFAULT;
     }
 
 
@@ -85,25 +80,23 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
         if (!(a instanceof AnnotatedField) && !(a instanceof AnnotatedMethod)) {
             return super.findNameForDeserialization(a);
         }
-        String name = null;
+
         IndexableProperty property = a.getAnnotation(IndexableProperty.class);
-        if (property != null) {
-            name = property.name();
+        if (property != null && !property.name().isEmpty()) {
+            return new PropertyName(property.name());
         }
 
         IndexableComponent component = a.getAnnotation(IndexableComponent.class);
-        if (component != null && name == null) {
-            name = component.name();
+        if (component != null && !component.name().isEmpty()) {
+            return new PropertyName(component.name());
         }
 
         IndexableProperties properties = a.getAnnotation(IndexableProperties.class);
-        if (properties != null && name == null) {
-            name = properties.name();
+        if (properties != null && !properties.name().isEmpty()) {
+            return new PropertyName(properties.name());
         }
-        if (name == null || name.isEmpty()) { // empty String means 'default'
-            return PropertyName.USE_DEFAULT;
-        }
-        return new PropertyName(name);
+
+        return PropertyName.USE_DEFAULT;
     }
 
     private boolean isDate(Annotated annotated) {
@@ -112,10 +105,7 @@ public class ElasticSearchOsemAnnotationIntrospector extends JacksonAnnotationIn
             ParameterizedType type = (ParameterizedType) annotated.getGenericType();
             clazz = (Class) type.getActualTypeArguments()[0];
         }
-        if (clazz.equals(Date.class)) {
-            return true;
-        }
-        return false;
+        return clazz.equals(Date.class);
     }
 
     @Override

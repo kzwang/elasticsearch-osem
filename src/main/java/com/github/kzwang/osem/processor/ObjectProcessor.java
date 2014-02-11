@@ -8,9 +8,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.github.kzwang.osem.annotations.Indexable;
 import com.github.kzwang.osem.cache.CacheType;
 import com.github.kzwang.osem.cache.OsemCache;
+import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 import com.github.kzwang.osem.jackson.JacksonElasticSearchOsemModule;
 import com.github.kzwang.osem.utils.OsemReflectionUtils;
-import org.elasticsearch.common.Preconditions;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -73,9 +73,8 @@ public class ObjectProcessor {
         try {
             return serializeMapper.writeValueAsString(object);
         } catch (Exception ex) {
-            logger.error("Failed to convert object to json string", ex);
+            throw new ElasticSearchOsemException("Failed to convert object to json string", ex);
         }
-        return null;
 
     }
 
@@ -91,10 +90,8 @@ public class ObjectProcessor {
         try {
             return deSerializeMapper.readValue(string, clazz);
         } catch (Exception ex) {
-            logger.error("Failed to convert object from json string", ex);
+            throw new ElasticSearchOsemException("Failed to convert object from json string", ex);
         }
-        return null;
-
     }
 
 
@@ -108,7 +105,9 @@ public class ObjectProcessor {
         Field idField = (Field) osemCache.getCache(CacheType.ID_FIELD, object.getClass());  // try cache first
         if (idField == null) {
             idField = OsemReflectionUtils.getIdField(object.getClass());
-            Preconditions.checkNotNull(idField, "Can't find id field for class: {}", object.getClass().getSimpleName());
+            if (idField == null) {
+                throw new ElasticSearchOsemException("Can't find id field for class: " + object.getClass().getSimpleName());
+            }
             osemCache.putCache(CacheType.ID_FIELD, object.getClass(), idField);
         }
         return OsemReflectionUtils.getFieldValue(object, idField);
@@ -128,7 +127,9 @@ public class ObjectProcessor {
             return getValueByPath(object, path);
         }
         Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
-        Preconditions.checkNotNull(indexable, "Class {} is no Indexable", object.getClass().getSimpleName());
+        if (indexable == null) {
+            throw new ElasticSearchOsemException("Class " + object.getClass().getSimpleName() + " is no Indexable");
+        }
         String path = indexable.routingFieldPath();
         osemCache.putCache(CacheType.ROUTING_PATH, clazz, path);
         if (!path.isEmpty()) {
@@ -151,7 +152,9 @@ public class ObjectProcessor {
             return getValueByPath(object, path);
         }
         Indexable indexable = (Indexable) clazz.getAnnotation(Indexable.class);
-        Preconditions.checkNotNull(indexable, "Class {} is no Indexable", object.getClass().getSimpleName());
+        if (indexable == null) {
+            throw new ElasticSearchOsemException("Class " + object.getClass().getSimpleName() + " is no Indexable");
+        }
         String path = indexable.parentPath();
         osemCache.putCache(CacheType.PARENT_PATH, clazz, path);
         if (!path.isEmpty()) {
