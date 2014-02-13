@@ -7,7 +7,8 @@ Object Search Engine Mapping for ElasticSearch
 
 |           OSEM            |   elasticsearch   | Release date |
 |---------------------------|-------------------|--------------|
-| 2.0.0-SNAPSHOT (master)   |   1.0.0.RC2       |              |
+| 2.1.0-SNAPSHOT (master)   |   1.0.0           |              |
+| 2.0.0                     |   1.0.0           | 2014-02-13   |
 | 2.0.0.RC1                 |   1.0.0.RC2       | 2014-02-06   |
 | 1.1.0-SNAPSHOT (1.x)      |   0.90.10         |              |
 | 1.0.0                     |   0.90.10         | 2014-02-03   |
@@ -101,6 +102,6 @@ Search Object:
     <dependency>
         <groupId>com.github.kzwang</groupId>
         <artifactId>elasticsearch-osem</artifactId>
-        <version>2.0.0.RC1</version>
+        <version>2.0.0</version>
     </dependency>
 ```
