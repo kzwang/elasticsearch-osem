@@ -37,7 +37,7 @@
     </parent>
 
     <properties>
-        <elasticsearch.version>1.0.0.RC2</elasticsearch.version>
+        <elasticsearch.version>1.0.0</elasticsearch.version>
         <jackson.version>2.3.1</jackson.version>
         <tests.jvms>1</tests.jvms>
         <tests.shuffle>true</tests.shuffle>
