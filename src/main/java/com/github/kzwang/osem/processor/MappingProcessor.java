@@ -1,18 +1,13 @@
 package com.github.kzwang.osem.processor;
 
-import com.github.kzwang.osem.annotations.*;
-import com.github.kzwang.osem.cache.CacheType;
-import com.github.kzwang.osem.cache.OsemCache;
-import com.github.kzwang.osem.exception.ElasticSearchOsemException;
-import com.github.kzwang.osem.utils.OsemReflectionUtils;
-import com.google.common.base.CaseFormat;
-import org.elasticsearch.common.collect.Lists;
-import org.elasticsearch.common.collect.Maps;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentHelper;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.reflections.ReflectionUtils.getAllFields;
+import static org.reflections.ReflectionUtils.getAllMethods;
+import static org.reflections.ReflectionUtils.withAnnotation;
 
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.IOException;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -20,8 +15,41 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
 
-import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.reflections.ReflectionUtils.*;
+import org.elasticsearch.ElasticsearchIllegalArgumentException;
+import org.elasticsearch.common.collect.Lists;
+import org.elasticsearch.common.collect.Maps;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentHelper;
+
+import com.github.kzwang.osem.annotations.DateDetectionEnum;
+import com.github.kzwang.osem.annotations.DocValuesFormatEnum;
+import com.github.kzwang.osem.annotations.DynamicEnum;
+import com.github.kzwang.osem.annotations.FieldDataFormat;
+import com.github.kzwang.osem.annotations.FieldDataLoading;
+import com.github.kzwang.osem.annotations.GeoShapeTreeEnum;
+import com.github.kzwang.osem.annotations.IncludeInAllEnum;
+import com.github.kzwang.osem.annotations.IndexEnum;
+import com.github.kzwang.osem.annotations.IndexOptionsEnum;
+import com.github.kzwang.osem.annotations.Indexable;
+import com.github.kzwang.osem.annotations.IndexableComponent;
+import com.github.kzwang.osem.annotations.IndexableId;
+import com.github.kzwang.osem.annotations.IndexableProperties;
+import com.github.kzwang.osem.annotations.IndexableProperty;
+import com.github.kzwang.osem.annotations.MultiFieldPathEnum;
+import com.github.kzwang.osem.annotations.NormsEnabledEnum;
+import com.github.kzwang.osem.annotations.NormsLoadingEnum;
+import com.github.kzwang.osem.annotations.NumericDetectionEnum;
+import com.github.kzwang.osem.annotations.ObjectFieldPathEnum;
+import com.github.kzwang.osem.annotations.PostingsFormatEnum;
+import com.github.kzwang.osem.annotations.TermVectorEnum;
+import com.github.kzwang.osem.annotations.TypeEnum;
+import com.github.kzwang.osem.cache.CacheType;
+import com.github.kzwang.osem.cache.OsemCache;
+import com.github.kzwang.osem.exception.ElasticSearchOsemException;
+import com.github.kzwang.osem.utils.OsemReflectionUtils;
+import com.google.common.base.CaseFormat;
 
 /**
  * Utils for mapping related operations
@@ -174,8 +202,7 @@ public class MappingProcessor {
         }
 
         // handle _id
-        Field indexableIdField = OsemReflectionUtils.getIdField(clazz);
-        Map<String, Object> idMap = getIndexableIdMap(indexableIdField);
+        Map<String, Object> idMap = getIndexableIdMap(clazz);
         if (!idMap.isEmpty()) {
             objectMap.put("_id", idMap);
         }
@@ -371,6 +398,33 @@ public class MappingProcessor {
         return objectMap;
     }
 
+    private static Map<String, Object> getIndexableIdMap(Class<?> clazz) {
+        Set<Field> fields = getAllFields(clazz, withAnnotation(IndexableId.class));
+        Set<Method> methods = getAllMethods(clazz, withAnnotation(IndexableId.class));
+
+        if (fields.size() + methods.size() == 0) {
+            throw new ElasticsearchIllegalArgumentException(String.format("Unable to find id field for class {}",
+                    clazz.getSimpleName()));
+        }
+
+        if (fields.size() + methods.size() > 1) {
+            throw new ElasticsearchIllegalArgumentException(String.format(
+                    "There is more than one id field for class {}", clazz.getSimpleName()));
+        }
+
+        if (fields.size() == 1) {
+            Field indexableIdField = fields.iterator().next();
+            return getIndexableIdMap(indexableIdField);
+        }
+
+        if (methods.size() == 1) {
+            Method indexableIdMethod = methods.iterator().next();
+            return getIndexableIdMap(indexableIdMethod);
+        }
+
+        return null;// No se debería llegar aquí
+    }
+
     private static Map<String, Object> getIndexableIdMap(Field field) {
         Map<String, Object> idMap = Maps.newHashMap();
 
@@ -395,6 +449,49 @@ public class MappingProcessor {
         return idMap;
     }
 
+    private static Map<String, Object> getIndexableIdMap(Method method) {
+        Map<String, Object> idMap = Maps.newHashMap();
+
+        IndexableId indexableId = method.getAnnotation(IndexableId.class);
+        if (indexableId.index() != IndexEnum.NA) {
+            idMap.put("index", indexableId.index().toString().toLowerCase());
+        }
+
+        if (indexableId.store()) {
+            idMap.put("store", "yes");
+        }
+
+        IndexableProperty indexableProperty = method.getAnnotation(IndexableProperty.class);
+        if (indexableProperty != null) {
+            String fieldName;
+            if (indexableProperty.name() != null && !indexableProperty.name().isEmpty()) {
+                fieldName = indexableProperty.name();
+            }
+            else{
+                fieldName = getFieldName(method);
+            }
+            idMap.put("path", fieldName);  // only need to put this if the IndexableId field is also IndexableProperty
+        }
+
+        return idMap;
+    }
+
+    private static String getFieldName(Method method) {
+        try{
+            BeanInfo info = Introspector.getBeanInfo(method.getDeclaringClass());  
+            PropertyDescriptor[] props = info.getPropertyDescriptors();  
+            for (PropertyDescriptor pd : props) {  
+                if(method.equals(pd.getWriteMethod()) || method.equals(pd.getReadMethod())){
+                    return pd.getName();
+                }
+            }
+        }
+        catch(Exception e){
+            logger.error("Unable to find property", e);
+        }
+        return null;
+    }
+    
     private static void processIndexableProperty(AccessibleObject accessibleObject, Map<String, Object> propertiesMap) {
         IndexableProperty indexableProperty = accessibleObject.getAnnotation(IndexableProperty.class);
         if (indexableProperty == null) {
@@ -403,6 +500,9 @@ public class MappingProcessor {
         String fieldName = null;
         if (accessibleObject instanceof Field) {
             fieldName = ((Field) accessibleObject).getName();
+        }
+        if (accessibleObject instanceof Method) {            
+            fieldName = getFieldName((Method) accessibleObject);
         }
         if (indexableProperty.name() != null && !indexableProperty.name().isEmpty()) {
             fieldName = indexableProperty.name();
@@ -517,17 +617,16 @@ public class MappingProcessor {
             fieldMap.put("postings_format", indexableProperty.postingsFormat().toString().toLowerCase());
         }
 
-        if (indexableProperty.similarity() != SimilarityEnum.NA) {
-            switch (indexableProperty.similarity()) {
-                case DEFAULT:
-                    fieldMap.put("similarity", indexableProperty.postingsFormat().toString().toLowerCase());
-                    break;
-                case BM25: // BM25 should be uppercase
-                    fieldMap.put("similarity", indexableProperty.postingsFormat().toString().toUpperCase());
-                    break;
-            }
+        switch (indexableProperty.similarity()) {
+            case DEFAULT:
+                fieldMap.put("similarity", indexableProperty.postingsFormat().toString().toLowerCase());
+                break;
+            case BM25: // BM25 should be uppercase
+                fieldMap.put("similarity", indexableProperty.postingsFormat().toString().toUpperCase());
+                break;
+            case NA:
+                break;
         }
-
 
         if (!indexableProperty.format().isEmpty()) {
             fieldMap.put("format", indexableProperty.format());
@@ -637,6 +736,9 @@ public class MappingProcessor {
         String fieldName = null;
         if (accessibleObject instanceof Field) {
             fieldName = ((Field) accessibleObject).getName();
+        }
+        if (accessibleObject instanceof Method) {
+            fieldName = getFieldName((Method) accessibleObject);
         }
         if (indexableComponent.name() != null && !indexableComponent.name().isEmpty()) {
             fieldName = indexableComponent.name();

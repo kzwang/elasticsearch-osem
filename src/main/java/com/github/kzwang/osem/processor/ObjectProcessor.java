@@ -1,5 +1,8 @@
 package com.github.kzwang.osem.processor;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -11,12 +14,9 @@ import com.github.kzwang.osem.cache.OsemCache;
 import com.github.kzwang.osem.exception.ElasticSearchOsemException;
 import com.github.kzwang.osem.jackson.JacksonElasticSearchOsemModule;
 import com.github.kzwang.osem.utils.OsemReflectionUtils;
+
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-
-import java.lang.reflect.Field;
-
-
 /**
  * Serialize/Deserialize object using Jackson
  */
@@ -103,14 +103,28 @@ public class ObjectProcessor {
      */
     public Object getIdValue(Object object) {
         Field idField = (Field) osemCache.getCache(CacheType.ID_FIELD, object.getClass());  // try cache first
-        if (idField == null) {
-            idField = OsemReflectionUtils.getIdField(object.getClass());
-            if (idField == null) {
-                throw new ElasticSearchOsemException("Can't find id field for class: " + object.getClass().getSimpleName());
-            }
-            osemCache.putCache(CacheType.ID_FIELD, object.getClass(), idField);
+        if(idField != null){
+            return OsemReflectionUtils.getFieldValue(object, idField);
         }
-        return OsemReflectionUtils.getFieldValue(object, idField);
+        
+        Method idMethod = (Method) osemCache.getCache(CacheType.ID_METHOD, object.getClass());  // try cache first
+        if (idMethod != null) {
+            return OsemReflectionUtils.getMethodValue(object, idMethod);
+        }
+        
+        idField = OsemReflectionUtils.getIdField(object.getClass());
+        if (idField != null) {
+            osemCache.putCache(CacheType.ID_FIELD, object.getClass(), idField);
+            return OsemReflectionUtils.getFieldValue(object, idField);
+        }
+        
+        idMethod = OsemReflectionUtils.getIdMethod(object.getClass());
+        if (idMethod != null) {
+            osemCache.putCache(CacheType.ID_METHOD, object.getClass(), idMethod);
+            return OsemReflectionUtils.getMethodValue(object, idMethod);
+        }
+        
+        throw new ElasticSearchOsemException("Can't find id for class: " + object.getClass().getSimpleName());
     }
 
     /**
